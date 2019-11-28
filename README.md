@@ -8,3 +8,9 @@
   - pySokoban is forked from
   
   https://github.com/kazantzakis/pySokoban/blob/master/
+  
+  command line executes
+  
+  python pySokoban/sokoban.py
+
+  

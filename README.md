@@ -13,4 +13,6 @@
   
   python pySokoban/sokoban.py
 
-  
+  Sample of warehouse maze
+
+  ![image]https://github.com/annsonic/2019_team_13_final_prj/blob/master/doc/maze.jpg

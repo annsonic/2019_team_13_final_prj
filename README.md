@@ -7,7 +7,7 @@
 * Modules
   - pySokoban is forked from
   
-    https://github.com/kazantzakis/pySokoban/blob/master/
+    https://github.com/kazantzakis/pySokoban
   
     command line executes:  $python pySokoban/sokoban.py
 

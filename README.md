@@ -26,7 +26,7 @@
     | Arrow Left  | Moving Left  |
     | Keypad +  | Level Up  |
     | Keypad -  | Level Down  |
-    | Key r  | Renew  |
+    | Key R  | Renew  |
     | Keypad Esc  | Quit Game  |
 
   - **SokobanSolver** is a path-planer, working for only 1 user-specified sokoban-level.

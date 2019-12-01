@@ -375,7 +375,7 @@ theme = "soft"#"default"
 level_set = "magic_sokoban6"#"original"
 
 # Set the start Level
-current_level = 7
+current_level = 1
 
 # Initialize Level
 initLevel(level_set,current_level)
@@ -398,6 +398,22 @@ while True:
 				drawLevel(myLevel.getLastMatrix())
 			elif event.key == pygame.K_r:
 				initLevel(level_set,current_level)
+			elif event.key == pygame.K_KP_PLUS:
+				if current_level<50:
+					myEnvironment.screen.fill((0, 0, 0))
+					print("Level Up")
+					current_level += 1
+					initLevel(level_set, current_level)
+				else:
+					print("Sorry, it's the final level")
+			elif event.key == pygame.K_KP_MINUS:
+				if current_level >1:
+					myEnvironment.screen.fill((0, 0, 0))
+					print("Level Down")
+					current_level -= 1
+					initLevel(level_set, current_level)
+				else:
+					print("Sorry, it's the beginning level")
 			elif event.key == pygame.K_ESCAPE:
 				pygame.quit()
 				sys.exit()

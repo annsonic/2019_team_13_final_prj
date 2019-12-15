@@ -33,3 +33,17 @@
     Forked from https://github.com/Dotrar/SokobanSolver
     
     - Under root folder, executes:  python sokobanSolver_pySokoban.py
+  - **Vision** is for localization of robot and boxes by image from the webcam. 
+  
+    Our Color filter is in HSV color space. We visualize the filtering performance by this tool.
+    
+    - Under root folder, executes:  python Vision/hsv_th.py <your image>
+  
+    Example:
+    
+    | Before  | After |
+    | ------------- | ------------- |
+    | <a href="url"><img src="https://github.com/annsonic/2019_team_13_final_prj/blob/master/doc/hsv_1.jpg" width="100" height="100"></a>  | <a href="url"><img src="https://github.com/annsonic/2019_team_13_final_prj/blob/master/doc/hsv_2.jpg" width="100" height="100"></a>  |
+
+     
+    

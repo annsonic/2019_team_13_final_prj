@@ -8,7 +8,7 @@ import sys
 from scipy import stats
 
 
-def approx2_rect(img2, bg='black'):
+def approx2_rect(img2, bg='black', mask=False):
 
     # Reading same image in another  
     # variable and converting to gray scale. 
@@ -40,21 +40,34 @@ def approx2_rect(img2, bg='black'):
         if (len(approx)<3):
             continue
         
-        x, y, w, h = cv2.boundingRect(approx)
-        p1 = np.matrix([[x, y]])
-        p2 = np.matrix([[x + w, y]])
-        p3 = np.matrix([[x, y + h]])
-        p4 = np.matrix([[x + w, y + h]])
-        xc = x + w/2.0
-        yc = y + h/2.0
-        # if rotated
-        # rect = cv2.minAreaRect(cnt)
-        # box = cv2.cv.BoxPoints(rect)
-        
-        # list_contour.append(approx)
-        list_contour.append(np.array([p1, p2, p3, p4]))
-        list_yolo_form.append(np.array([xc, yc, w, h]))
+        if not mask:
+            x, y, w, h = cv2.boundingRect(approx)
+            p1 = np.matrix([[x, y]])
+            p2 = np.matrix([[x + w, y]])
+            p3 = np.matrix([[x, y + h]])
+            p4 = np.matrix([[x + w, y + h]])
+            xc = x + w/2.0
+            yc = y + h/2.0
+        else:# if rotated
+            a, b, c, d = approx
+            print(a)
+            p1 = np.matrix(a)
+            p2 = np.matrix(b)
+            p3 = np.matrix(c)
+            p4 = np.matrix(d)
+            
+            # TODO: use momentum to calculate
+            xc = 0#x + w/2.0
+            yc = 0#y + h/2.0
+            w = 0
+            h = 0
+            
+        list_contour.append(np.array([p1, p2, p3, p4]).astype(int))
+        list_yolo_form.append(np.array([xc, yc, w, h]).astype(int))
     # print(len(list_contour))
+    if len(list_yolo_form) == 0:
+        raise ValueError('Error to detect rectangles.')
+        sys.exit(1)
     
     return list_contour, list_yolo_form
     
@@ -107,17 +120,17 @@ def find_index_on_puzzle(x, y, lat, long):
     # TODO: compare the values of lat[thisLat] and lat[thisLat+1]
     if 0< xi < len(lat):
         xi = list(lat).index(min((lat[xi-1], lat[xi]), key=lambda t: abs(x-t)))
-    else:
-        xi -= 1
+    # else:
+        # xi -= 1
     if 0< yi < len(long):
         yi = list(long).index(min((long[yi-1], long[yi]), key=lambda t: abs(y-t)))
-    else:
-        yi -= 1
-    print(xi, yi)
-    return xi, yi
+    # else:
+        # yi -= 1
+    print(xi-1, yi-1)
+    return xi-1, yi-1
     
-def get_rect(img2, bg='black'):  
-    list_contour, list_yolo_form = approx2_rect(img2, bg)
+def get_rect(img2, bg='black', mask=False):  
+    list_contour, list_yolo_form = approx2_rect(img2, bg, mask)
     
     visualize_contour(img2, list_contour)
     
@@ -155,43 +168,51 @@ def main(img2, merge_grid=False):
         kernel = np.ones((2,2),np.uint8)
         erosion = cv2.erode(segment, kernel, iterations = 10)
         dilate = cv2.dilate(erosion,kernel,iterations = 10)
-        list_contour, list_yolo_form = get_rect(dilate, bg='black')
+        list_contour, list_yolo_form = get_rect(dilate, bg='black', mask=False)
         
-        if len(list_contour) == 0:
-            raise ValueError('Error to detect rectangles.')
-            sys.exit(1)
-        lat = np.zeros(8)
-        long = np.zeros(7)
-        for i, rect in enumerate(list_contour[0:8]):
-            lat[i] = list(list_contour[i][0][0])[0]
+        # Build list of boundary points
+        lat = np.zeros(8+2)
+        long = np.zeros(7+2)
+        pt = list(list_yolo_form[0])
+        lat[0] = pt[0] + pt[2]
+        for i, rect in enumerate(list_yolo_form[0:8]):
+            lat[i+1] = list(list_yolo_form[i])[0]
+        pt = list(list_yolo_form[7])
+        lat[-1] = pt[0] - pt[2]
         lat = np.flip(lat)
         
-        i = 0
-        for rect in list_contour:
-            x = list(rect[0][0])[0]
-            xi=np.searchsorted(lat,x)
-            if xi == 0:
-                long[i] = list(rect[0][0])[1]
+        pt = list(list_yolo_form[0])
+        long[0] = pt[1] + pt[3]
+        i = 1
+        for rect in list_yolo_form:
+            x = list(rect)[0]
+            xi = np.searchsorted(lat,x)
+            
+            if xi == 1:
+                long[i] = list(rect)[1]
                 i += 1
+        pt = list(list_yolo_form[-1])
+        long[-1] = pt[1] - pt[3]
         long = np.flip(long)
         
-        find_index_on_puzzle(108, 195, lat, long)
+        find_index_on_puzzle(549, 636, lat, long)
     
     # Following are a whole
     else:
         kernel = np.ones((2,2),np.uint8)
         dilate = cv2.dilate(segment,kernel,iterations = 10)
         erosion = cv2.erode(dilate, kernel, iterations = 10)
-        list_contour, list_yolo_form = get_rect(erosion, bg='black')
+        list_contour, list_yolo_form = get_rect(erosion, bg='black', mask=True)
         
-
+    return list_contour, list_yolo_form
+    
     
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         fn = sys.argv[1]
     else:
-        fn = 'map/3.png' # 'shapes.png'
+        fn = 'map/2.png' # 'shapes.png'
     img2 = cv2.imread(fn)
     
-    main(img2, merge_grid=False)
+    main(img2, merge_grid=True)
     

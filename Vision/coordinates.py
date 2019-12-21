@@ -1,14 +1,17 @@
 #
 # https://www.geeksforgeeks.org/find-co-ordinates-of-contours-using-opencv-python/
+# https://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
 
 import numpy as np 
 import cv2
 import imutils
 import sys
 from scipy import stats
-
-
-def approx2_rect(img2, bg='black', mask=False):
+import os
+base_dir = os.path.abspath(os.path.dirname(__file__))
+  
+    
+def approx2_rect(img2, bg='black', skew=False):
 
     # Reading same image in another  
     # variable and converting to gray scale. 
@@ -21,7 +24,12 @@ def approx2_rect(img2, bg='black', mask=False):
     else:
         th = cv2.THRESH_BINARY
     _, threshold = cv2.threshold(img, 0, 255, th+cv2.THRESH_OTSU)
-    
+    if False:
+        cv2.imshow('threshold', threshold)
+        k = cv2.waitKey(0)
+        # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+        if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+            cv2.destroyAllWindows()
     # Detecting contours in image. 
     contours = cv2.findContours(threshold, cv2.RETR_EXTERNAL, 
                                    cv2.CHAIN_APPROX_SIMPLE) 
@@ -29,8 +37,9 @@ def approx2_rect(img2, bg='black', mask=False):
     
     list_contour = []
     list_yolo_form = []
-    # Filter out small contours
+    
     for cnt in cnts :
+        # Filter out small contours
         if cv2.contourArea(cnt) < 100:
             continue
     
@@ -40,7 +49,7 @@ def approx2_rect(img2, bg='black', mask=False):
         if (len(approx)<3):
             continue
         
-        if not mask:
+        if not skew:
             x, y, w, h = cv2.boundingRect(approx)
             p1 = np.matrix([[x, y]])
             p2 = np.matrix([[x + w, y]])
@@ -50,17 +59,18 @@ def approx2_rect(img2, bg='black', mask=False):
             yc = y + h/2.0
         else:# if rotated
             a, b, c, d = approx
-            print(a)
-            p1 = np.matrix(a)
-            p2 = np.matrix(b)
-            p3 = np.matrix(c)
-            p4 = np.matrix(d)
+            
+            p1 = np.matrix(a) # upper left
+            p2 = np.matrix(b) # upper right
+            p3 = np.matrix(c) # lower left
+            p4 = np.matrix(d) # lower right
             
             # TODO: use momentum to calculate
-            xc = 0#x + w/2.0
-            yc = 0#y + h/2.0
-            w = 0
-            h = 0
+            moment = cv2.moments(threshold)
+            xc = moment["m10"] / moment["m00"]
+            yc = moment["m01"] / moment["m00"]
+            w = (np.linalg.norm(b-a)+np.linalg.norm(d-c))/2
+            h = (np.linalg.norm(c-a)+np.linalg.norm(d-b))/2
             
         list_contour.append(np.array([p1, p2, p3, p4]).astype(int))
         list_yolo_form.append(np.array([xc, yc, w, h]).astype(int))
@@ -71,11 +81,11 @@ def approx2_rect(img2, bg='black', mask=False):
     
     return list_contour, list_yolo_form
     
-def visualize_contour(img2, list_contour):  
-    font = cv2.FONT_HERSHEY_COMPLEX 
+def visualize_contour(img2, list_contour, list_yolo_form):  
+    font = cv2.FONT_HERSHEY_DUPLEX 
     
     # Going through every contours found in the image. 
-    for approx in list_contour :
+    for idx,approx in enumerate(list_contour):
         # draws boundary of contours. 
         cv2.drawContours(img2, [approx], 0, (0, 0, 255), 5)  
       
@@ -90,25 +100,41 @@ def visualize_contour(img2, list_contour):
                 y = n[i + 1] 
       
                 # String containing the co-ordinates. 
-                string = str(x) + " " + str(y)  
+                string = "({},{})".format(x,y)
       
                 if(i == 0): 
                     # text on topmost co-ordinate. 
-                    cv2.putText(img2, "Arrow tip", (x, y), 
-                                    font, 0.5, (255, 0, 0))  
+                    cv2.putText(img=img2, 
+                        text="Arrow tip ({},{})".format(x, y), 
+                        org=(x, y), 
+                        fontFace=font, 
+                        fontScale=0.7, 
+                        color=(255, 255, 255), 
+                        thickness=2)
                 else: 
                     # text on remaining co-ordinates. 
                     cv2.putText(img2, string, (x, y),  
-                              font, 0.5, (0, 255, 0))  
+                              font, 0.7, (0, 255, 0), 2)  
             i = i + 1
-      
+        
+        cX = list_yolo_form[idx][0]
+        cY = list_yolo_form[idx][1]
+        # put text and highlight the center
+        cv2.circle(img2, (cX, cY), 5, (255, 255, 255), -1)
+        cv2.putText(img2, "centroid ({},{})".format(cX, cY), 
+                   (cX - 25, cY - 25),
+                   font, 
+                   0.7, (255, 255, 255), 2)
+        
     # Showing the final image. 
-    cv2.namedWindow('contours', cv2.WINDOW_KEEPRATIO)
+    # cv2.namedWindow('contours', cv2.WINDOW_NORMAL)
     cv2.imshow('contours', img2)  
       
-    # Exiting the window if 'q' is pressed on the keyboard. 
-    if cv2.waitKey(0) & 0xFF == ord('q'):  
-        cv2.destroyAllWindows() 
+    k = cv2.waitKey(0)
+    # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+    if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+        cv2.destroyAllWindows()
+        cv2.imwrite(img_name, segment)
 
 def find_index_on_puzzle(x, y, lat, long):
     # lat=np.linspace(15,30,61)
@@ -129,10 +155,11 @@ def find_index_on_puzzle(x, y, lat, long):
     print(xi-1, yi-1)
     return xi-1, yi-1
     
-def get_rect(img2, bg='black', mask=False):  
-    list_contour, list_yolo_form = approx2_rect(img2, bg, mask)
+def get_rect(img2, bg='black', skew=False):  
+    list_contour, list_yolo_form = approx2_rect(img2, bg, skew)
     
-    visualize_contour(img2, list_contour)
+    if False:
+        visualize_contour(img2, list_contour, list_yolo_form)
     
     arr_yolo_form = np.array(list_yolo_form)
     # grids are always squares so it doesn't care if you get width or height
@@ -141,32 +168,15 @@ def get_rect(img2, bg='black', mask=False):
     
     return list_contour, list_yolo_form
     
-def color_filter(img, light, dark):
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv_img, light, dark)
-    segment = cv2.bitwise_and(img, img, mask=mask)
-    return segment
-    
+
+    ####
 def main(img2, merge_grid=False):
-    dict_hsv = {
-    "light_green": (45, 0, 50),
-    "dark_green": (80, 100, 165),
-    "light_yellow": (20, 190, 150),
-    "dark_yellow": (90, 255, 255),
-    "light_orange": (5, 50, 150),
-    "dark_orange": (20, 255, 255),
-    "light_white": (60, 0, 100),
-    "dark_white": (179, 255, 255)
-    }
-    
-    # Target at green grids
-    segment = color_filter(img2, dict_hsv["light_green"], dict_hsv["dark_green"])
     
     # Following are grid-wise
     if not merge_grid:
         # Sharpen gaps
         kernel = np.ones((2,2),np.uint8)
-        erosion = cv2.erode(segment, kernel, iterations = 10)
+        erosion = cv2.erode(img2, kernel, iterations = 10)
         dilate = cv2.dilate(erosion,kernel,iterations = 10)
         list_contour, list_yolo_form = get_rect(dilate, bg='black', mask=False)
         
@@ -199,10 +209,20 @@ def main(img2, merge_grid=False):
     
     # Following are a whole
     else:
-        kernel = np.ones((2,2),np.uint8)
-        dilate = cv2.dilate(segment,kernel,iterations = 10)
-        erosion = cv2.erode(dilate, kernel, iterations = 10)
-        list_contour, list_yolo_form = get_rect(erosion, bg='black', mask=True)
+        "Note: kernel size is depend on the puzzle in image"
+        kernel = np.ones((50,50),np.uint8)
+        # dilate = cv2.dilate(img2,kernel,iterations = 10)
+        # erosion = cv2.erode(dilate, kernel, iterations = 10)
+        # 
+        closing = cv2.morphologyEx(img2, cv2.MORPH_CLOSE, kernel)
+        opening = cv2.morphologyEx(img2, cv2.MORPH_OPEN, kernel)
+        if True:
+            cv2.imshow('erosion', opening)
+            k = cv2.waitKey(0)
+            # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+            if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+                cv2.destroyAllWindows()
+        list_contour, list_yolo_form = get_rect(opening, bg='black', mask=True)
         
     return list_contour, list_yolo_form
     
@@ -211,7 +231,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         fn = sys.argv[1]
     else:
-        fn = 'map/2.png' # 'shapes.png'
+        fn = os.path.join(base_dir, 'map/2.png') # 'shapes.png'
     img2 = cv2.imread(fn)
     
     main(img2, merge_grid=True)

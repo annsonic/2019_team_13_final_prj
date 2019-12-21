@@ -3,6 +3,7 @@
 import cv2
 import sys
 import numpy as np
+import os
 
 def nothing(x):
     pass
@@ -77,6 +78,6 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         fn = sys.argv[1]
     else:
-        fn = 'map/4.png'
+        fn = os.path.join(os.path.abspath(os.path.dirname(__file__)),'camera_data/monitoring_1.png')
     main(fn)
     

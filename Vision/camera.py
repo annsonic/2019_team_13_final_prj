@@ -1,3 +1,5 @@
+#
+# https://docs.opencv.org/trunk/d9/d61/tutorial_py_morphological_ops.html
 import cv2
 import sys
 import numpy as np
@@ -54,16 +56,19 @@ class myCamera():
         self.dist = np.zeros(1)
         self.newcam_mtx = np.zeros(1)
         self.M = np.zeros(1)
+        self.warped_w = 0
+        self.warped_h = 0
         if os.path.isfile(self.folder + '/cam_mtx.npy'):
             self.cam_mtx = np.load(self.folder + '/cam_mtx.npy')
         if os.path.isfile(self.folder + '/dist.npy'):
             self.dist = np.load(self.folder + '/dist.npy')
         if os.path.isfile(self.folder + '/newcam_mtx.npy'):
             self.newcam_mtx = np.load(self.folder + '/newcam_mtx.npy')
-        if os.path.isfile(self.folder + '/M.npy'):
-            self.M = np.load(self.folder + '/M.npy')
-        self.warped_w = 0
-        self.warped_h = 0
+        if os.path.isfile(self.folder + '/M.npz'):
+            npzfile = np.load(self.folder + '/M.npz')
+            self.M = npzfile['name1']
+            self.warped_w = np.asscalar(npzfile['name2'])
+            self.warped_h = np.asscalar(npzfile['name3'])
             
     def camera_view(self, mode="calibration"):
         # mode = "calibration" or "monitoring"

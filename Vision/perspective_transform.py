@@ -63,7 +63,8 @@ def four_point_transform(image, pts, ret=False):
     # compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)
     
-    np.save(os.path.join(base_dir, 'camera_data', 'M.npy'), M)
+    np.savez(os.path.join(base_dir, 'camera_data', 'M.npz'), 
+            name1=M, name2=maxWidth, name3=maxHeight)
     
     warped = None
     if ret:

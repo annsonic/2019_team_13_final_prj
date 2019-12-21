@@ -76,5 +76,5 @@ def main(cam_id=1,
         robot.release()
 
 if __name__ == '__main__':
-    main(cam_id=0,
+    main(cam_id=1,
          host='192.168.0.126')

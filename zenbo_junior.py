@@ -17,7 +17,7 @@ class myRobot():
                      RobotFace.PROUD, RobotFace.SINGING, 
                      RobotFace.ACTIVE, RobotFace.AWARE_LEFT, 
                      RobotFace.AWARE_RIGHT],
-        "negative" = [RobotFace.SHY, RobotFace.EXPECTING, 
+        "negative": [RobotFace.SHY, RobotFace.EXPECTING, 
                       RobotFace.SHOCKED, RobotFace.DOUBTING]
                       }
         self.pos_line = ['yes sir', 'go go go', 'lets go', 'ok', 'hey hey',

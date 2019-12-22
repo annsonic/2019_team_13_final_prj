@@ -55,6 +55,9 @@ class Game():
         
     def parse_cv_to_matrix(self):
         pass
+        
+    def check_cv_matrix_is_coherent(self):
+        pass
 
     def loop(self):
         while self.game_ing:
@@ -88,14 +91,14 @@ def main(cam_id=0,
         # coordinate parsing for each grid
         
         # build matrix of puzzle status
-    
+
 
 if __name__ == '__main__':
     # main(preview_camera=True)
     
-    main(cam_id=0, 
-         has_robot=False, 
-         host='192.168.0.126')
+    # main(cam_id=0, 
+         # has_robot=False, 
+         # host='192.168.0.126')
     
     # if len(sys.argv) > 1:
         # fn = sys.argv[1]

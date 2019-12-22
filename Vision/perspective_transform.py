@@ -61,8 +61,11 @@ def four_point_transform(image, pts, ret=False):
           [0, maxHeight - 1]], dtype = "float32")
     
     # compute the perspective transform matrix and then apply it
-    M = cv2.getPerspectiveTransform(rect, dst)
+    # M = cv2.getPerspectiveTransform(rect, dst)
+    M, status = cv2.findHomography(rect, dst)
     
+    if os.path.isfile(os.path.join(base_dir, 'camera_data', 'M.npz')):
+        os.remove(os.path.join(base_dir, 'camera_data', 'M.npz'))
     np.savez(os.path.join(base_dir, 'camera_data', 'M.npz'), 
             name1=M, name2=maxWidth, name3=maxHeight)
     

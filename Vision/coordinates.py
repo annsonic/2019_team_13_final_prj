@@ -11,12 +11,11 @@ import os
 base_dir = os.path.abspath(os.path.dirname(__file__))
   
     
-def approx2_rect(img2, bg='black', skew=False):
-
-    # Reading same image in another  
-    # variable and converting to gray scale. 
-    img = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-      
+def approx2_rect(img, bg='black', skew=False, area=100):
+    
+    if len(img.shape)==3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.GaussianBlur(img, (3, 3), 0)
     # Converting image to a binary image 
     # ( black and white only image). 
     if bg == 'white':
@@ -24,7 +23,7 @@ def approx2_rect(img2, bg='black', skew=False):
     else:
         th = cv2.THRESH_BINARY
     _, threshold = cv2.threshold(img, 0, 255, th+cv2.THRESH_OTSU)
-    if False:
+    if True:
         cv2.imshow('threshold', threshold)
         k = cv2.waitKey(0)
         # Exiting the window if 'q'/ESC is pressed on the keyboard. 
@@ -39,17 +38,34 @@ def approx2_rect(img2, bg='black', skew=False):
     list_yolo_form = []
     
     for cnt in cnts :
+        
         # Filter out small contours
-        if cv2.contourArea(cnt) < 100:
+        if (cv2.contourArea(cnt) < area):
             continue
-    
+        if (not skew) and (cv2.contourArea(cnt) > area*2):
+            continue
+        # print(cv2.contourArea(cnt))
         # Filter out line segments
         approx = cv2.approxPolyDP(cnt, 
-            epsilon=0.01*cv2.arcLength(cnt, True), closed=True) 
-        if (len(approx)<3):
+            epsilon=0.03*cv2.arcLength(cnt, True), closed=True) 
+        print(len(approx))
+        if (len(approx)!=4):
             continue
         
-        if not skew:
+        if skew:# if rotated
+            a, b, c, d = approx
+            
+            p1 = np.matrix(a) # upper left
+            p2 = np.matrix(b) # lower left
+            p3 = np.matrix(c) # lower right
+            p4 = np.matrix(d) # upper right
+            
+            moment = cv2.moments(approx)
+            xc = moment["m10"] / moment["m00"]
+            yc = moment["m01"] / moment["m00"]
+            w = (np.linalg.norm(d-a)+np.linalg.norm(c-b))/2
+            h = (np.linalg.norm(b-a)+np.linalg.norm(c-d))/2
+        else:
             x, y, w, h = cv2.boundingRect(approx)
             p1 = np.matrix([[x, y]])
             p2 = np.matrix([[x + w, y]])
@@ -57,20 +73,6 @@ def approx2_rect(img2, bg='black', skew=False):
             p4 = np.matrix([[x + w, y + h]])
             xc = x + w/2.0
             yc = y + h/2.0
-        else:# if rotated
-            a, b, c, d = approx
-            
-            p1 = np.matrix(a) # upper left
-            p2 = np.matrix(b) # upper right
-            p3 = np.matrix(c) # lower left
-            p4 = np.matrix(d) # lower right
-            
-            # TODO: use momentum to calculate
-            moment = cv2.moments(threshold)
-            xc = moment["m10"] / moment["m00"]
-            yc = moment["m01"] / moment["m00"]
-            w = (np.linalg.norm(b-a)+np.linalg.norm(d-c))/2
-            h = (np.linalg.norm(c-a)+np.linalg.norm(d-b))/2
             
         list_contour.append(np.array([p1, p2, p3, p4]).astype(int))
         list_yolo_form.append(np.array([xc, yc, w, h]).astype(int))
@@ -84,6 +86,8 @@ def approx2_rect(img2, bg='black', skew=False):
 def visualize_contour(img2, list_contour, list_yolo_form):  
     font = cv2.FONT_HERSHEY_DUPLEX 
     
+    if len(img2.shape)<3:
+        img2 = cv2.cvtColor(img2, cv2.COLOR_GRAY2BGR)
     # Going through every contours found in the image. 
     for idx,approx in enumerate(list_contour):
         # draws boundary of contours. 
@@ -101,7 +105,7 @@ def visualize_contour(img2, list_contour, list_yolo_form):
       
                 # String containing the co-ordinates. 
                 string = "({},{})".format(x,y)
-      
+                
                 if(i == 0): 
                     # text on topmost co-ordinate. 
                     cv2.putText(img=img2, 
@@ -127,14 +131,15 @@ def visualize_contour(img2, list_contour, list_yolo_form):
                    0.7, (255, 255, 255), 2)
         
     # Showing the final image. 
-    # cv2.namedWindow('contours', cv2.WINDOW_NORMAL)
-    cv2.imshow('contours', img2)  
+    cv2.namedWindow( 'contours',cv2.WINDOW_AUTOSIZE)
+    cv2.imshow('contours', img2)
+    img_name = os.path.join(base_dir, "{}.png".format("log_get_rect"))
+    cv2.imwrite(img_name, img2)
       
     k = cv2.waitKey(0)
     # Exiting the window if 'q'/ESC is pressed on the keyboard. 
     if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
         cv2.destroyAllWindows()
-        cv2.imwrite(img_name, segment)
 
 def find_index_on_puzzle(x, y, lat, long):
     # lat=np.linspace(15,30,61)
@@ -155,15 +160,16 @@ def find_index_on_puzzle(x, y, lat, long):
     print(xi-1, yi-1)
     return xi-1, yi-1
     
-def get_rect(img2, bg='black', skew=False):  
-    list_contour, list_yolo_form = approx2_rect(img2, bg, skew)
+def get_rect(img2, bg='black', skew=False, area=100):  
     
-    if False:
-        visualize_contour(img2, list_contour, list_yolo_form)
+    list_contour, list_yolo_form = approx2_rect(img2, bg, skew, area)
     
-    arr_yolo_form = np.array(list_yolo_form)
+    if True:
+        visualize_contour(img2.copy(), list_contour, list_yolo_form)
+    
+    # arr_yolo_form = np.array(list_yolo_form)
     # grids are always squares so it doesn't care if you get width or height
-    common_width = stats.mode(arr_yolo_form[:][:,2])[0][0]
+    # common_width = stats.mode(arr_yolo_form[:][:,2])[0][0]
     # print(common_width)
     
     return list_contour, list_yolo_form
@@ -207,25 +213,61 @@ def main(img2, merge_grid=False):
         
         find_index_on_puzzle(549, 636, lat, long)
     
-    # Following are a whole
-    else:
-        "Note: kernel size is depend on the puzzle in image"
-        kernel = np.ones((50,50),np.uint8)
-        # dilate = cv2.dilate(img2,kernel,iterations = 10)
-        # erosion = cv2.erode(dilate, kernel, iterations = 10)
-        # 
-        closing = cv2.morphologyEx(img2, cv2.MORPH_CLOSE, kernel)
-        opening = cv2.morphologyEx(img2, cv2.MORPH_OPEN, kernel)
-        if True:
-            cv2.imshow('erosion', opening)
-            k = cv2.waitKey(0)
-            # Exiting the window if 'q'/ESC is pressed on the keyboard. 
-            if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
-                cv2.destroyAllWindows()
-        list_contour, list_yolo_form = get_rect(opening, bg='black', mask=True)
+    # # Following are a whole
+    # else:
+        # "Note: kernel size is depend on the puzzle in image"
+        # kernel = np.ones((50,50),np.uint8)
+        # # dilate = cv2.dilate(img2,kernel,iterations = 10)
+        # # erosion = cv2.erode(dilate, kernel, iterations = 10)
+        # # 
+        # closing = cv2.morphologyEx(img2, cv2.MORPH_CLOSE, kernel)
+        # opening = cv2.morphologyEx(img2, cv2.MORPH_OPEN, kernel)
+        # if True:
+            # cv2.imshow('erosion', opening)
+            # k = cv2.waitKey(0)
+            # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+            # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+                # cv2.destroyAllWindows()
+        # list_contour, list_yolo_form = get_rect(opening, bg='black', mask=True)
         
     return list_contour, list_yolo_form
     
+def test():
+    import camera
+    import re
+    
+    cam = camera.myCamera(id=0)
+    files = [filename for filename in os.listdir(cam.folder) if filename.startswith("monitoring")]
+    files = sorted(files, key=lambda x:float(re.findall("(\d+)",x)[0]))
+    img_name = os.path.join(cam.folder, files[-1])
+    img = cv2.imread(img_name)
+    print("Step(3) Calculate perspective transformation matrix")
+    # cam.get_perspective(img)
+    
+    warped = cam.bird_view(img)
+    
+    robot = cam.color_filter(warped, 
+            cam.dict_role_hsv["robot"]["light"], 
+            cam.dict_role_hsv["robot"]["dark"])
+    if np.sum(robot) == 0:
+        raise ValueError("Xinyi: Can not detect color of wall in this image")
+        sys.exit(1)
+            
+    list_contour, list_yolo_form = get_rect(
+            robot, bg='black', skew=False, area=cam.dict_role_hsv["robot"]["area"]) # box:1000, robot: 300
+            
+    
+    
+    if False:
+        print("\tThis is the transformed view sample:")
+        cv2.imshow("Original", img)
+        cv2.imshow("Warped", box)
+            
+          
+        k = cv2.waitKey(0)
+        # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+        if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+            cv2.destroyAllWindows()
     
 if __name__ == '__main__':
     if len(sys.argv) > 1:
@@ -234,5 +276,5 @@ if __name__ == '__main__':
         fn = os.path.join(base_dir, 'map/2.png') # 'shapes.png'
     img2 = cv2.imread(fn)
     
-    main(img2, merge_grid=True)
-    
+    # main(img2, merge_grid=True)
+    test()

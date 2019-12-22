@@ -58,7 +58,7 @@ def main(cam_id=1,
     print("Step(3) Calculate perspective transformation matrix")
     cam.get_perspective(img)
     
-    if False:
+    if True:
         print("\tThis is the transformed view sample:")
         warped = cam.bird_view(img)
         cv2.imshow("Original", img)
@@ -75,6 +75,29 @@ def main(cam_id=1,
     if has_robot:
         robot.release()
 
+def test():
+    cam = camera.myCamera(id=0)
+    files = [filename for filename in os.listdir(cam.folder) if filename.startswith("monitoring")]
+    files = sorted(files, key=lambda x:float(re.findall("(\d+)",x)[0]))
+    img_name = os.path.join(cam.folder, files[-1])
+    img = cv2.imread(img_name)
+    print("Step(3) Calculate perspective transformation matrix")
+    cam.get_perspective(img)
+    
+    if True:
+        print("\tThis is the transformed view sample:")
+        warped = cam.bird_view(img)
+        cv2.imshow("Original", img)
+        cv2.imshow("Warped", warped)
+            
+          
+        k = cv2.waitKey(0)
+        # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+        if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+            cv2.destroyAllWindows()
+
 if __name__ == '__main__':
-    main(cam_id=1,
-         host='192.168.0.126')
+    # main(cam_id=1,
+         # host='192.168.0.126')
+    
+    test()

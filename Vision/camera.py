@@ -21,20 +21,20 @@ class myCamera():
         self.cam.set(cv2.CAP_PROP_AUTOFOCUS, False)
         
         dict_hsv = {
-            "light_green": (65, 25, 0),
-            "dark_green": (80, 255, 170),
-            "light_yellow": (15, 45, 0),
-            "dark_yellow": (40, 255, 255),
-            "light_cyan": (80, 10, 160),
-            "dark_cyan": (120, 75, 255),
-            "light_blue": (75, 70, 165),
-            "dark_blue": (140, 170, 255),
-            "light_red": (0, 60, 0),
-            "dark_red": (20, 255, 175),
+            "light_green": (46, 30, 0),
+            "dark_green": (100, 255, 255),
+            "light_yellow": (15, 35, 0),
+            "dark_yellow": (45, 255, 255),
+            "light_cyan": (80, 0, 190),
+            "dark_cyan": (150, 85, 255),
+            "light_blue": (90, 0, 0),
+            "dark_blue": (150, 255, 255),
+            "light_red": (0, 0, 0),
+            "dark_red": (7, 255, 255),
             "light_orange": (5, 150, 0),
-            "dark_orange": (20, 255, 255),
-            "light_white": (90, 0, 135),
-            "dark_white": (110, 20, 255)
+            "dark_orange": (17, 255, 255),
+            "light_white": (0, 0, 0),
+            "dark_white": (60, 0, 255)
             }
         
         self.dict_role_hsv = {
@@ -44,11 +44,13 @@ class myCamera():
                 },
             "box": {
                 "light": dict_hsv["light_yellow"],
-                "dark": dict_hsv["dark_yellow"]
+                "dark": dict_hsv["dark_yellow"],
+                "area": 1000
                 },
             "robot": {
                 "light": dict_hsv["light_orange"],
-                "dark": dict_hsv["dark_orange"]
+                "dark": dict_hsv["dark_orange"],
+                "area": 300
                 },
             }
         
@@ -229,38 +231,65 @@ class myCamera():
         segment = cv2.bitwise_and(img, img, mask=mask)
         return segment
         
+    def auto_canny(self, image, sigma=0.33):
+        # compute the median of the single channel pixel intensities
+        v = np.median(image)
+     
+        # apply automatic Canny edge detection using the computed median
+        lower = int(max(0, (1.0 - sigma) * v))
+        upper = int(min(255, (1.0 + sigma) * v))
+        edged = cv2.Canny(image, lower, upper)
+     
+        # return the edged image
+        return edged
+    
     def get_perspective(self, img):
         # Target at wall
         segment = self.color_filter(img, 
             self.dict_role_hsv["wall"]["light"], 
             self.dict_role_hsv["wall"]["dark"])
-        
         if np.sum(segment) == 0:
             raise ValueError("Xinyi: Can not detect color of wall in this image")
             sys.exit(1)
+        segment = cv2.cvtColor(segment, cv2.COLOR_BGR2GRAY)
+        
+        # Note: kernel size is depend on the puzzle in image
+        # segment = cv2.GaussianBlur(segment, (15, 15), 0)
+        # # apply Canny edge detection using a wide threshold, tight
+        # # threshold, and automatically determined threshold
+        # # segment = self.auto_canny(segment)
+        segment = cv2.Canny(segment, 20, 160)
+        
         if False:
+            cv2.namedWindow( 'raw',cv2.WINDOW_AUTOSIZE)
+            cv2.namedWindow( 'seg',cv2.WINDOW_AUTOSIZE)
             cv2.imshow('raw', img)
             cv2.imshow('seg', segment)
             # k = cv2.waitKey(0)
             # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
             # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
                 # cv2.destroyAllWindows()
-            
-        # Filter out noisy shapes and smooth the edges
-        # Note: kernel size is depend on the puzzle in image
-        kernel = np.ones((10,10),np.uint8)
-        segment = cv2.morphologyEx(segment, cv2.MORPH_OPEN, kernel)
+        
+        
+        # # Filter out noisy shapes and smooth the edges
+        # # Note: kernel size is depend on the puzzle in image
+        kernel = np.ones((15,15),np.uint8)
         segment = cv2.morphologyEx(segment, cv2.MORPH_CLOSE, kernel)
+        # segment = cv2.dilate(segment, (20, 20), 10)
+        # segment = cv2.erode(segment, (20, 20), 10)
+        # segment = cv2.morphologyEx(segment, cv2.MORPH_OPEN, kernel)
         if False:
+            cv2.namedWindow( 'filtered',cv2.WINDOW_AUTOSIZE)
             cv2.imshow('filtered', segment)
-            k = cv2.waitKey(0)
+            # k = cv2.waitKey(0)
             # Exiting the window if 'q'/ESC is pressed on the keyboard. 
-            if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
-                cv2.destroyAllWindows()
-                img_name = os.path.join(self.folder, "{}.png".format("filt"))
-                cv2.imwrite(img_name, segment)
+            # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+                # cv2.destroyAllWindows()
+                # img_name = os.path.join(self.folder, "{}.png".format("filt"))
+                # cv2.imwrite(img_name, segment)
         # Get outermost contour
-        list_contour, list_yolo_form = coordinates.get_rect(segment, bg='black', skew=True)
+        list_contour, list_yolo_form = coordinates.get_rect(
+            segment, bg='black', skew=True, area=150000)
         
         if len(list_yolo_form) == 0:
             raise ValueError("Xinyi: Get too many rectangles.")

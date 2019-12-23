@@ -4,101 +4,447 @@ import os
 import time
 import numpy as np
 import re
+import copy
+from mpi4py import MPI
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(base_dir, 'Vision'))
 sys.path.append(os.path.join(base_dir, 'pySokoban'))
 from Vision import camera
 from Vision import coordinates
+from coordinates import imgParser
 from pySokoban.Level import Level
 from zenbo_junior import myRobot
+import control
+
 
 class Game():
-    def __init__(self, cam_id, host):
-        self.cam = camera.myCamera(id=cam_id)
+    def __init__(self, host):
         self.host = host
         if self.host:
             self.robot = myRobot(host)
-        # Choose a level set
+  
+        # pySokoban
         self.level_set = "magic_sokoban6"#"original"
-        # Set the start Level
         self.current_level = 7
         self.myLevel = Level(self.level_set, self.current_level)
         self.target_found = False
         self.game_ing = True
         
-    def monitor(self):
-        # Use test images
-        files = [filename for filename in os.listdir(self.cam.folder) if filename.startswith("monitoring")]
-        files = sorted(files, key=lambda x:float(re.findall("(\d+)",x)[0]))
-        img_name = os.path.join(self.cam.folder, files[-1])
-        frame = cv2.imread(img_name)
+        # self.img_parser = imgParser(self.myLevel.matrix, 
+            # self.cam.warped_w, self.cam.warped_h)
+    
+    def movePlayer(self, direction):
         
-        # ret, frame = self.cam.cam.read() # OK
+        matrix = self.myLevel.getMatrix()
         
-        if (len(self.cam.cam_mtx)==3 \
-            and len(self.cam.dist[0])==5 \
-            and len(self.cam.newcam_mtx)==3):
-            frame = self.cam.undistort(frame)
-            # print("Xinyi: using undistort")
-        if len(self.cam.M)==3:
-            frame = self.cam.bird_view(frame)
-            # print("Xinyi: using bird_view")
+        self.myLevel.addToHistory(matrix)
         
-        cv2.imshow("monitor", frame)
-        k = cv2.waitKey(1)
-        # Exiting the window if 'q'/ESC is pressed on the keyboard. 
-        if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
-            self.game_ing = False
+        x = self.myLevel.getPlayerPosition()[0]
+        y = self.myLevel.getPlayerPosition()[1]
+        
+        #print boxes
+        print("\tboxes coordination: ",self.myLevel.getBoxes())
+        
+        if direction == "Left":
+            print("\t######### Moving Left #########")
             
-        return frame
+            # if is_space
+            if self.myLevel.matrix[y][x-1] == " ":
+                print("\tOK Space Found")
+                self.myLevel.matrix[y][x-1] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                    self.target_found = False
+                else:
+                    self.myLevel.matrix[y][x] = " "
+            
+            # if is_box
+            elif self.myLevel.matrix[y][x-1] == "$":
+                print("\tBox Found")
+                if self.myLevel.matrix[y][x-2] == " ":
+                    self.myLevel.matrix[y][x-2] = "$"
+                    self.myLevel.matrix[y][x-1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                elif self.myLevel.matrix[y][x-2] == ".":
+                    self.myLevel.matrix[y][x-2] = "*"
+                    self.myLevel.matrix[y][x-1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    
+                    
+            # if is_box_on_target
+            elif self.myLevel.matrix[y][x-1] == "*":
+                print("\tBox on target Found")
+                if self.myLevel.matrix[y][x-2] == " ":
+                    self.myLevel.matrix[y][x-2] = "$"
+                    self.myLevel.matrix[y][x-1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+                    
+                elif self.myLevel.matrix[y][x-2] == ".":
+                    self.myLevel.matrix[y][x-2] = "*"
+                    self.myLevel.matrix[y][x-1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+                    
+            # if is_target
+            elif self.myLevel.matrix[y][x-1] == ".":
+                print("\tTarget Found")
+                self.myLevel.matrix[y][x-1] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                else:
+                    self.myLevel.matrix[y][x] = " "
+                self.target_found = True
+            
+            # else
+            else:
+                print("\tThere is a wall here")
+        
+        elif direction == "Right":
+            print("\t######### Moving Right #########")
+
+            # if is_space
+            if self.myLevel.matrix[y][x+1] == " ":
+                print("\tOK Space Found")
+                self.myLevel.matrix[y][x+1] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                    self.target_found = False
+                else:
+                    self.myLevel.matrix[y][x] = " "
+            
+            # if is_box
+            elif self.myLevel.matrix[y][x+1] == "$":
+                print("\tBox Found")
+                if self.myLevel.matrix[y][x+2] == " ":
+                    self.myLevel.matrix[y][x+2] = "$"
+                    self.myLevel.matrix[y][x+1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                
+                elif self.myLevel.matrix[y][x+2] == ".":
+                    self.myLevel.matrix[y][x+2] = "*"
+                    self.myLevel.matrix[y][x+1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "				
+            
+            # if is_box_on_target
+            elif self.myLevel.matrix[y][x+1] == "*":
+                print("\tBox on target Found")
+                if self.myLevel.matrix[y][x+2] == " ":
+                    self.myLevel.matrix[y][x+2] = "$"
+                    self.myLevel.matrix[y][x+1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+                    
+                elif self.myLevel.matrix[y][x+2] == ".":
+                    self.myLevel.matrix[y][x+2] = "*"
+                    self.myLevel.matrix[y][x+1] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+                
+            # if is_target
+            elif self.myLevel.matrix[y][x+1] == ".":
+                print("\tTarget Found")
+                self.myLevel.matrix[y][x+1] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                else:
+                    self.myLevel.matrix[y][x] = " "
+                self.target_found = True
+                
+            # else
+            else:
+                print("\tThere is a wall here")
+
+        elif direction == "Down":
+            print("\t######### Moving Down #########")
+
+            # if is_space
+            if self.myLevel.matrix[y+1][x] == " ":
+                print("\tOK Space Found")
+                self.myLevel.matrix[y+1][x] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                    self.target_found = False
+                else:
+                    self.myLevel.matrix[y][x] = " "
+            
+            # if is_box
+            elif self.myLevel.matrix[y+1][x] == "$":
+                print("\tBox Found")
+                if self.myLevel.matrix[y+2][x] == " ":
+                    self.myLevel.matrix[y+2][x] = "$"
+                    self.myLevel.matrix[y+1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                
+                elif self.myLevel.matrix[y+2][x] == ".":
+                    self.myLevel.matrix[y+2][x] = "*"
+                    self.myLevel.matrix[y+1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+            
+            # if is_box_on_target
+            elif self.myLevel.matrix[y+1][x] == "*":
+                print("\tBox on target Found")
+                if self.myLevel.matrix[y+2][x] == " ":
+                    self.myLevel.matrix[y+2][x] = "$"
+                    self.myLevel.matrix[y+1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+                    
+                elif self.myLevel.matrix[y+2][x] == ".":
+                    self.myLevel.matrix[y+2][x] = "*"
+                    self.myLevel.matrix[y+1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+            
+            # if is_target
+            elif self.myLevel.matrix[y+1][x] == ".":
+                print("\tTarget Found")
+                self.myLevel.matrix[y+1][x] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                else:
+                    self.myLevel.matrix[y][x] = " "
+                self.target_found = True
+                
+            # else
+            else:
+                print("\tThere is a wall here")
+
+        elif direction == "Up":
+            print("\t######### Moving Up #########")
+
+            # if is_space
+            if self.myLevel.matrix[y-1][x] == " ":
+                print("\tOK Space Found")
+                self.myLevel.matrix[y-1][x] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                    self.target_found = False
+                else:
+                    self.myLevel.matrix[y][x] = " "
+            
+            # if is_box
+            elif self.myLevel.matrix[y-1][x] == "$":
+                print("\tBox Found")
+                if self.myLevel.matrix[y-2][x] == " ":
+                    self.myLevel.matrix[y-2][x] = "$"
+                    self.myLevel.matrix[y-1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+
+                elif self.myLevel.matrix[y-2][x] == ".":
+                    self.myLevel.matrix[y-2][x] = "*"
+                    self.myLevel.matrix[y-1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                        self.target_found = False
+                    else:
+                        self.myLevel.matrix[y][x] = " "					
+                        
+            # if is_box_on_target
+            elif self.myLevel.matrix[y-1][x] == "*":
+                print("\tBox on target Found")
+                if self.myLevel.matrix[y-2][x] == " ":
+                    self.myLevel.matrix[y-2][x] = "$"
+                    self.myLevel.matrix[y-1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+                    
+                elif self.myLevel.matrix[y-2][x] == ".":
+                    self.myLevel.matrix[y-2][x] = "*"
+                    self.myLevel.matrix[y-1][x] = "@"
+                    if self.target_found == True:
+                        self.myLevel.matrix[y][x] = "."
+                    else:
+                        self.myLevel.matrix[y][x] = " "
+                    self.target_found = True
+                        
+            # if is_target
+            elif self.myLevel.matrix[y-1][x] == ".":
+                print("\tTarget Found")
+                self.myLevel.matrix[y-1][x] = "@"
+                if self.target_found == True:
+                    self.myLevel.matrix[y][x] = "."
+                else:
+                    self.myLevel.matrix[y][x] = " "
+                self.target_found = True
+                
+            # else
+            else:
+                print("\tThere is a wall here")
+        
+        # Zenbo move
+        
+        print("\n\tBoxes remaining: " + str(len(self.myLevel.getBoxes())))
+        
+        if len(self.myLevel.getBoxes()) == 0:
+            # self.myEnvironment.screen.fill((0, 0, 0))
+            print("\n\tLevel Completed")
+            # Zenbo say congratuations
+    
+    def parse_matrix_to_str(self, matrix):
+        # print(self.myLevel.matrix)
+        ret = []
+        for list_m in matrix:
+            s = "".join(str(m) for m in list_m)
+            s += "\n"
+            ret.append(s)
+        return ret
         
     def parse_cv_to_matrix(self):
-        pass
+        frame = self.monitor()
+        self.img_parser.update_matrix(self.cam, frame)
         
     def check_cv_matrix_is_coherent(self):
         pass
 
-    def loop(self):
-        while self.game_ing:
-            frame = self.monitor()
-                
-            # if True: # Get gesture event and robot is static
-                # Parse frame to matrix status
-                # movePlayer()
-            
-        cv2.destroyAllWindows()
+    def loop(self, comm, rank, has_robot):
+        comm.send(True, dest=rank+1)
         
+        while True:
+            direction = None
+            direction = comm.recv(source=rank+1)
+            sys.stdout.flush()
+            print("direction", direction)
+            
+            if direction == "Quit":
+                break
+            elif direction == "Help": # 
+                m = copy.deepcopy(self.myLevel.matrix)
+                list_direction = []
+                
+                while len(list_direction)==0:
+                    list_str = self.parse_matrix_to_str(self.myLevel.matrix)
+                    comm.send(list_str, dest=rank+1)
+                    
+                    list_direction = comm.recv(source=rank+1)
+                    
+                    m = self.myLevel.getLastMatrix()
+                
+                comm.send(has_robot, dest=rank+1)
+                for idx, d in enumerate(list_direction):
+                    if has_robot:
+                        direction = ""
+                        while direction != d:
+                            # Zenbo say direction
+                            comm.send(idx, dest=rank+1)
+                            direction = comm.recv(source=rank+1)
+                    self.movePlayer(direction)
+                break
+            
+            elif direction is not None:
+                self.movePlayer(direction)
+                
         if self.host:
             self.robot.release()
             
 
+        
 def main(cam_id=0,
          has_robot=True, 
          host=None):
     
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    node_name = MPI.Get_processor_name()
+    print("Hello world from process {} at {}".format(rank, node_name))
     
-    if not has_robot:
-        host = None
-    
-    g = Game(cam_id, host)
-    
-    g.loop()
-    # game_ing = True
-    # while game_ing:
-        # cam.camera_view(robot=True)
+    if rank == 0:
+        print("Passive part")
+        if not has_robot:
+            host = None
         
-        # coordinate parsing for each grid
+        g = Game(host)
         
-        # build matrix of puzzle status
-
+            
+        # Robot get ready
+        # g.parse_cv_to_matrix()
+        
+        g.loop(comm, rank, has_robot)
+        
+        print("process {} is done".format(rank))
+        
+    elif rank == 1:
+        sys.stdout.flush()
+        print("Active part")
+        control.main(comm, rank, level_set='magic_sokoban6', current_level=7)
+        print("process {} is done".format(rank))
+    
+    elif rank == 2:
+        sys.stdout.flush()
+        print("Camera part")
+        
+        vs = camera.myCamera(id=cam_id).start()
+        while True:
+            frame = vs.read()
+            cv2.imshow("Frame", frame)
+            k = cv2.waitKey(1)
+            if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+                break
+            
+        cv2.destroyAllWindows()
+        vs.stop()
+        
+        
+        
+        sys.stdout.flush()
+        print("process {} is done".format(rank))
 
 if __name__ == '__main__':
-    # main(preview_camera=True)
+    # mpiexec -n 2 python 2_main.py
     
-    # main(cam_id=0, 
-         # has_robot=False, 
-         # host='192.168.0.126')
+    main(cam_id=0, 
+         has_robot=False, 
+         host='192.168.0.126')
     
     # if len(sys.argv) > 1:
         # fn = sys.argv[1]

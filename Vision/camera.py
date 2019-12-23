@@ -4,6 +4,7 @@ import cv2
 import sys
 import numpy as np
 import re
+from threading import Thread
 import os
 base_dir = os.path.abspath(os.path.dirname(__file__))
 import coordinates
@@ -72,6 +73,36 @@ class myCamera():
             self.warped_w = np.asscalar(npzfile['name2'])
             self.warped_h = np.asscalar(npzfile['name3'])
             
+        ###
+        (self.grabbed, self.frame) = self.cam.read()
+        
+        # initialize the variable used to indicate if the thread should
+        # be stopped
+        self.stopped = False
+        
+    def start(self):
+        # start the thread to read frames from the video stream
+        Thread(target=self.update, args=()).start()
+        return self
+        
+    def update(self):
+        # keep looping infinitely until the thread is stopped
+        while True:
+            # if the thread indicator variable is set, stop the thread
+            if self.stopped:
+                return
+            
+            # otherwise, read the next frame from the stream
+            (self.grabbed, self.frame) = self.cam.read()
+            
+    def read(self):
+        # return the frame most recently read
+        return self.frame
+        
+    def stop(self):
+        # indicate that the thread should be stopped
+        self.stopped = True
+            
     def camera_view(self, mode="calibration"):
         # mode = "calibration" or "monitoring"
         
@@ -87,7 +118,7 @@ class myCamera():
             
             if (len(self.cam_mtx)==3 and len(self.dist[0])==5 and len(self.newcam_mtx)==3):
                 frame = self.undistort(frame)
-                # print("Xinyi: using undistort")
+                # # print("Xinyi: using undistort")
             if len(self.M)==3:
                 frame = self.bird_view(frame)
                 # print("Xinyi: using bird_view")
@@ -97,6 +128,7 @@ class myCamera():
             k = cv2.waitKey(1)
             # Exiting the window if 'q'/ESC is pressed on the keyboard. 
             if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+                self.working = False
                 break
             # SPACE pressed
             elif (k%256 == 32)or (mode=="monitoring"):
@@ -243,7 +275,7 @@ class myCamera():
         # return the edged image
         return edged
     
-    def get_perspective(self, img):
+    def get_perspective(self, img, area=150000):
         # Target at wall
         segment = self.color_filter(img, 
             self.dict_role_hsv["wall"]["light"], 
@@ -289,7 +321,7 @@ class myCamera():
                 # cv2.imwrite(img_name, segment)
         # Get outermost contour
         list_contour, list_yolo_form = coordinates.get_rect(
-            segment, bg='black', skew=True, area=150000)
+            segment, bg='black', skew=True, area=area)
         
         if len(list_yolo_form) == 0:
             raise ValueError("Xinyi: Get too many rectangles.")

@@ -36,6 +36,7 @@ def main(cam_id=1,
         robot.say("I like you")
     
     print("Step(1) Manually check view coverage and shoot chessboard images")
+    print("Please allow the chessboard to cover the field of view as much as possible")
     if preview_camera:
         cam.camera_view()
     
@@ -97,7 +98,7 @@ def test():
             cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    # main(cam_id=1,
-         # host='192.168.0.126')
+    main(cam_id=1,
+         host='192.168.0.126')
     
-    test()
+    # test()

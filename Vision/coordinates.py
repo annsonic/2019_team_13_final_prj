@@ -6,10 +6,93 @@ import numpy as np
 import cv2
 import imutils
 import sys
-from scipy import stats
+import copy
+# from scipy import stats
 import os
 base_dir = os.path.abspath(os.path.dirname(__file__))
   
+
+class imgParser():
+    def __init__(self, matrix, puzzle_w, puzzle_h):
+        self.matrix = copy.deepcopy(matrix)
+        [self.num_col, self.num_row] = self.getSize()
+        self.lat = np.zeros(self.num_col)
+        self.long = np.zeros(self.num_row)
+        self.build_grid_center_points(puzzle_w, puzzle_h)
+        self.dict_symbol = {
+            "wall": "#",
+            "robot": "@",
+            "robot_on_goal": "+",
+            "box": "$",
+            "box_on_goal": "*",
+            "goal": ".",
+            "floor": " "
+            }
+        
+        
+        
+    def build_grid_center_points(self, puzzle_w, puzzle_h):
+        unit_w = int(puzzle_w / self.num_col)
+        unit_h = int(puzzle_h / self.num_row)
+        
+        self.lat = np.arange(unit_w/2, puzzle_w, unit_w)
+        self.long = np.arange(unit_h/2, puzzle_h, unit_h)
+        # print(self.lat, self.long)
+        
+    def find_index_on_puzzle(self, x, y):
+        # lat=np.linspace(15,30,61)
+        # long=np.linspace(91,102,45)
+        
+        xi=np.searchsorted(self.lat, x)
+        yi=np.searchsorted(self.long, y)
+        
+        # Compare the distance between lat[thisLat-1] and lat[thisLat]
+        if 0< xi < len(self.lat):
+            xi = list(self.lat).index(
+                min((self.lat[xi-1], self.lat[xi]), key=lambda t: abs(x-t)))
+        if 0< yi < len(self.long):
+            yi = list(self.long).index(
+                min((self.long[yi-1], self.long[yi]), key=lambda t: abs(y-t)))
+        # print(xi, yi)
+        return xi, yi
+        
+    def update_matrix(self, cam, warped):
+        robot_contour, robot_yolo_form = object_get_rect(cam, warped, role="robot")
+        box_contour, box_yolo_form = object_get_rect(cam, warped, role="box")
+        
+        xi_r, yi_r = self.find_index_on_puzzle(
+            x=list(robot_yolo_form[0])[0], y=list(robot_yolo_form[0])[1])
+        list_xi_b = []
+        list_yi_b = []
+        for box in box_yolo_form:
+            xi, yi = self.find_index_on_puzzle(
+                x=list(box)[0], y=list(box)[1])
+            list_xi_b.append(xi)
+            list_yi_b.append(yi)
+        
+        for i in range(0, len(self.matrix)):
+            # Iterate all columns
+            for k in range(0, len(self.matrix[i]) - 1):
+                if self.matrix[i][k] == self.self.dict_symbol["box"]:
+                    print('box', k, i)
+                if self.matrix[i][k] == self.self.dict_symbol["robot"]:
+                    print('robot', k, i)
+                if self.matrix[i][k] == self.self.dict_symbol["box_on_goal"]:
+                    print('box_on_goal', k, i)
+                if self.matrix[i][k] == self.self.dict_symbol["robot_on_goal"]:
+                    print('robot_on_goal', k, i)
+                    # boxes.append([k, i])
+        # return boxes
+
+    def getSize(self):
+        max_row_length = 0
+        # Iterate all Rows
+        for i in range(0, len(self.matrix)):
+            # Iterate all columns
+            row_length = len(self.matrix[i])
+            if row_length > max_row_length:
+                max_row_length = row_length
+        return [max_row_length, len(self.matrix)]
     
 def approx2_rect(img, bg='black', skew=False, area=100):
     
@@ -23,7 +106,7 @@ def approx2_rect(img, bg='black', skew=False, area=100):
     else:
         th = cv2.THRESH_BINARY
     _, threshold = cv2.threshold(img, 0, 255, th+cv2.THRESH_OTSU)
-    if True:
+    if False:
         cv2.imshow('threshold', threshold)
         k = cv2.waitKey(0)
         # Exiting the window if 'q'/ESC is pressed on the keyboard. 
@@ -46,9 +129,13 @@ def approx2_rect(img, bg='black', skew=False, area=100):
             continue
         # print(cv2.contourArea(cnt))
         # Filter out line segments
+        # Note: scale 0.03 depends on environment settings
+        scale = 0.1 #is for monitoring_0~2.png
+        if cv2.contourArea(cnt) < 400:
+            scale = 0.03
         approx = cv2.approxPolyDP(cnt, 
-            epsilon=0.03*cv2.arcLength(cnt, True), closed=True) 
-        print(len(approx))
+            epsilon=scale*cv2.arcLength(cnt, True), closed=True) 
+        # print(len(approx))
         if (len(approx)!=4):
             continue
         
@@ -141,30 +228,11 @@ def visualize_contour(img2, list_contour, list_yolo_form):
     if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
         cv2.destroyAllWindows()
 
-def find_index_on_puzzle(x, y, lat, long):
-    # lat=np.linspace(15,30,61)
-    # long=np.linspace(91,102,45)
-    
-    xi=np.searchsorted(lat,x)
-    yi=np.searchsorted(long,y)
-    
-    # TODO: compare the values of lat[thisLat] and lat[thisLat+1]
-    if 0< xi < len(lat):
-        xi = list(lat).index(min((lat[xi-1], lat[xi]), key=lambda t: abs(x-t)))
-    # else:
-        # xi -= 1
-    if 0< yi < len(long):
-        yi = list(long).index(min((long[yi-1], long[yi]), key=lambda t: abs(y-t)))
-    # else:
-        # yi -= 1
-    print(xi-1, yi-1)
-    return xi-1, yi-1
-    
 def get_rect(img2, bg='black', skew=False, area=100):  
     
     list_contour, list_yolo_form = approx2_rect(img2, bg, skew, area)
     
-    if True:
+    if False:
         visualize_contour(img2.copy(), list_contour, list_yolo_form)
     
     # arr_yolo_form = np.array(list_yolo_form)
@@ -174,6 +242,8 @@ def get_rect(img2, bg='black', skew=False, area=100):
     
     return list_contour, list_yolo_form
     
+
+
 
     ####
 def main(img2, merge_grid=False):
@@ -232,42 +302,57 @@ def main(img2, merge_grid=False):
         
     return list_contour, list_yolo_form
     
+def object_get_rect(cam, warped, role):
+    obj = cam.color_filter(warped, 
+            cam.dict_role_hsv[role]["light"], 
+            cam.dict_role_hsv[role]["dark"])
+    if np.sum(obj) == 0:
+        raise ValueError("Xinyi: Can not detect color of {} in this image".format(role))
+        sys.exit(1)
+            
+    list_contour, list_yolo_form = get_rect(
+            obj, bg='black', skew=False, area=cam.dict_role_hsv[role]["area"])
+    return list_contour, list_yolo_form
+    
 def test():
     import camera
     import re
     
     cam = camera.myCamera(id=0)
+    
     files = [filename for filename in os.listdir(cam.folder) if filename.startswith("monitoring")]
     files = sorted(files, key=lambda x:float(re.findall("(\d+)",x)[0]))
     img_name = os.path.join(cam.folder, files[-1])
     img = cv2.imread(img_name)
-    print("Step(3) Calculate perspective transformation matrix")
-    # cam.get_perspective(img)
+    
+    # cam.get_perspective(img) # Calculate transformation matrix again
     
     warped = cam.bird_view(img)
     
-    robot = cam.color_filter(warped, 
-            cam.dict_role_hsv["robot"]["light"], 
-            cam.dict_role_hsv["robot"]["dark"])
-    if np.sum(robot) == 0:
-        raise ValueError("Xinyi: Can not detect color of wall in this image")
-        sys.exit(1)
-            
-    list_contour, list_yolo_form = get_rect(
-            robot, bg='black', skew=False, area=cam.dict_role_hsv["robot"]["area"]) # box:1000, robot: 300
-            
+    robot_contour, robot_yolo_form = object_get_rect(cam, warped, role="robot")
+    box_contour, box_yolo_form = object_get_rect(cam, warped, role="box")
+    # print(robot_contour, robot_yolo_form)
+    # print(box_contour, box_yolo_form)
     
-    
-    if False:
-        print("\tThis is the transformed view sample:")
-        cv2.imshow("Original", img)
-        cv2.imshow("Warped", box)
+    # if False:
+        # print("\tThis is the transformed view sample:")
+        # cv2.imshow("Original", img)
+        # cv2.imshow("Warped", box)
             
           
-        k = cv2.waitKey(0)
-        # Exiting the window if 'q'/ESC is pressed on the keyboard. 
-        if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
-            cv2.destroyAllWindows()
+        # k = cv2.waitKey(0)
+        # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+        # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+            # cv2.destroyAllWindows()
+    img_parser = imgParser(num_row=7, num_col=8)
+    img_parser.build_grid_center_points(puzzle_w=cam.warped_w, puzzle_h=cam.warped_h)
+    
+    xi, yi = img_parser.find_index_on_puzzle(
+        x=list(robot_yolo_form[0])[0], y=list(robot_yolo_form[0])[1])
+    for box in box_yolo_form:
+        xi, yi = img_parser.find_index_on_puzzle(
+        x=list(box)[0], y=list(box)[1])
+        
     
 if __name__ == '__main__':
     if len(sys.argv) > 1:

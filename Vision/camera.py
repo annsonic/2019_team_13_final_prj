@@ -1,4 +1,5 @@
 #
+# https://www.pyimagesearch.com/2015/12/21/increasing-webcam-fps-with-python-and-opencv/
 # https://docs.opencv.org/trunk/d9/d61/tutorial_py_morphological_ops.html
 import cv2
 import sys
@@ -9,8 +10,33 @@ import os
 base_dir = os.path.abspath(os.path.dirname(__file__))
 import coordinates
 import perspective_transform
+parentdir = os.path.dirname(base_dir)
+sys.path.append(parentdir)
+from constants import dict_hsv   # Inside parent folder
+from constants import dict_role_hsv
+
 
 class myCamera():
+    """ Takes cares of images from camera
+    
+    Attributes:
+        cam (cv2.VideoCapture): 
+        folder (str): absolute path of log folder
+        dict_role_hsv (dict): mapping hsv space for each role(wall, robot, ...)
+        cam_mtx (cv2.Mat): camera intrinsic parameters
+        dist (cv2.Mat): vector of distortion coefficients
+        rvecs (cv2.Mat): vector of rotation vectors
+        tvecs (cv2.Mat): vector of translation vectors
+        newcam_mtx (cv2.Mat): optimal new camera matrix based on the free scaling parameter
+        M (cv2.Mat): perspective transformation matrix
+        warped_w (int): maximum distance between bottom-right and bottom-left  of raw ROI
+        warped_h (int): maximum distance between the top-right and bottom-right of raw ROI
+        grabbed (cv2.Mat): next available frame
+        frame (cv2.Mat): current frame
+        stopped (bool): indicating whether the threaded frame reading should be stopped or not
+        
+    """
+    
     def __init__(self, id=0):
         self.cam = cv2.VideoCapture(id)
         self.folder = os.path.join(base_dir, 'camera_data')
@@ -21,39 +47,7 @@ class myCamera():
         # Disable autofocus
         self.cam.set(cv2.CAP_PROP_AUTOFOCUS, False)
         
-        dict_hsv = {
-            "light_green": (46, 30, 0),
-            "dark_green": (100, 255, 255),
-            "light_yellow": (15, 35, 0),
-            "dark_yellow": (45, 255, 255),
-            "light_cyan": (80, 0, 190),
-            "dark_cyan": (150, 85, 255),
-            "light_blue": (90, 0, 0),
-            "dark_blue": (150, 255, 255),
-            "light_red": (0, 0, 0),
-            "dark_red": (7, 255, 255),
-            "light_orange": (5, 150, 0),
-            "dark_orange": (17, 255, 255),
-            "light_white": (0, 0, 0),
-            "dark_white": (60, 0, 255)
-            }
-        
-        self.dict_role_hsv = {
-            "wall": {
-                "light": dict_hsv["light_green"],
-                "dark": dict_hsv["dark_green"]
-                },
-            "box": {
-                "light": dict_hsv["light_yellow"],
-                "dark": dict_hsv["dark_yellow"],
-                "area": 1000
-                },
-            "robot": {
-                "light": dict_hsv["light_orange"],
-                "dark": dict_hsv["dark_orange"],
-                "area": 300
-                },
-            }
+        self.dict_role_hsv = dict_role_hsv
         
         self.cam_mtx = np.zeros(1)
         self.dist = np.zeros(1)
@@ -346,14 +340,27 @@ class myCamera():
 
 if __name__ == '__main__':
     cam = myCamera(id=0)
-    # cam.camera_view(robot=False)
     
+    # # Test video stream & calibration effect
+    # cam.camera_view(mode="calibration")
+    
+    # # Test chessboard calibration
     # cam.calibration()
-    # files = [filename for filename in os.listdir(cam.folder) if filename.startswith('frame_')]
-    # img_name = os.path.join(cam.folder, files[-1])
-    # img1 = cv2.imread(img_name)
-    # cam.undistort(img1)
     
-    fn = os.path.join(base_dir, 'map/2.png') # 'shapes.png'
-    img = cv2.imread(fn)
-    cam.get_perspective(img)
+    # # Test calibration effect
+    # files = [filename for filename in os.listdir(cam.folder) if filename.startswith('calibration')]
+    # if len(files)>0:
+        # img_name = os.path.join(cam.folder, files[-1])
+        # img1 = cv2.imread(img_name)
+        # cam.undistort(img1, viz=True)
+    
+    # # Test perspective transform
+    # fn = os.path.join(cam.folder, 'monitoring_0.png') # 'shapes.png'
+    # img = cv2.imread(fn)
+    # cam.get_perspective(img)
+    # warped = cam.bird_view(img)
+    # cv2.imshow('transformed', warped)
+    # k = cv2.waitKey(0)
+    # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+    # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+        # cv2.destroyAllWindows()

@@ -10,26 +10,31 @@ import copy
 # from scipy import stats
 import os
 base_dir = os.path.abspath(os.path.dirname(__file__))
-  
+parentdir = os.path.dirname(base_dir)
+sys.path.append(parentdir)
+from constants import level_set   # Inside parent folder
+from constants import current_level
+from constants import dict_symbol
 
 class imgParser():
+    """ Get index of grid which is occupied by object
+    
+    matrix (list): 2D, recording each grid is occupied by what kind of object
+    num_col (int): number of column of matrix
+    num_row (int): number of row of matrix
+    lat (numpy array): 1D, the horizontal center of each grid
+    long (numpy array): 1D, the vertical center of each grid
+    dict_symbol (dict): mapping object and symbol
+    
+    """
+    
     def __init__(self, matrix, puzzle_w, puzzle_h):
         self.matrix = copy.deepcopy(matrix)
         [self.num_col, self.num_row] = self.getSize()
         self.lat = np.zeros(self.num_col)
         self.long = np.zeros(self.num_row)
         self.build_grid_center_points(puzzle_w, puzzle_h)
-        self.dict_symbol = {
-            "wall": "#",
-            "robot": "@",
-            "robot_on_goal": "+",
-            "box": "$",
-            "box_on_goal": "*",
-            "goal": ".",
-            "floor": " "
-            }
-        
-        
+        self.dict_symbol = dict_symbol
         
     def build_grid_center_points(self, puzzle_w, puzzle_h):
         unit_w = int(puzzle_w / self.num_col)
@@ -94,7 +99,7 @@ class imgParser():
                 max_row_length = row_length
         return [max_row_length, len(self.matrix)]
     
-def approx2_rect(img, bg='black', skew=False, area=100):
+def approx2_rect(img, bg='black', skew=False, area=100, scale=0.03):
     
     if len(img.shape)==3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -130,9 +135,7 @@ def approx2_rect(img, bg='black', skew=False, area=100):
         # print(cv2.contourArea(cnt))
         # Filter out line segments
         # Note: scale 0.03 depends on environment settings
-        scale = 0.1 #is for monitoring_0~2.png
-        if cv2.contourArea(cnt) < 400:
-            scale = 0.03
+        
         approx = cv2.approxPolyDP(cnt, 
             epsilon=scale*cv2.arcLength(cnt, True), closed=True) 
         # print(len(approx))
@@ -228,9 +231,9 @@ def visualize_contour(img2, list_contour, list_yolo_form):
     if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
         cv2.destroyAllWindows()
 
-def get_rect(img2, bg='black', skew=False, area=100):  
+def get_rect(img2, bg='black', skew=False, area=100, scale=0.03):  
     
-    list_contour, list_yolo_form = approx2_rect(img2, bg, skew, area)
+    list_contour, list_yolo_form = approx2_rect(img2, bg, skew, area, scale)
     
     if False:
         visualize_contour(img2.copy(), list_contour, list_yolo_form)
@@ -241,66 +244,7 @@ def get_rect(img2, bg='black', skew=False, area=100):
     # print(common_width)
     
     return list_contour, list_yolo_form
-    
 
-
-
-    ####
-def main(img2, merge_grid=False):
-    
-    # Following are grid-wise
-    if not merge_grid:
-        # Sharpen gaps
-        kernel = np.ones((2,2),np.uint8)
-        erosion = cv2.erode(img2, kernel, iterations = 10)
-        dilate = cv2.dilate(erosion,kernel,iterations = 10)
-        list_contour, list_yolo_form = get_rect(dilate, bg='black', mask=False)
-        
-        # Build list of boundary points
-        lat = np.zeros(8+2)
-        long = np.zeros(7+2)
-        pt = list(list_yolo_form[0])
-        lat[0] = pt[0] + pt[2]
-        for i, rect in enumerate(list_yolo_form[0:8]):
-            lat[i+1] = list(list_yolo_form[i])[0]
-        pt = list(list_yolo_form[7])
-        lat[-1] = pt[0] - pt[2]
-        lat = np.flip(lat)
-        
-        pt = list(list_yolo_form[0])
-        long[0] = pt[1] + pt[3]
-        i = 1
-        for rect in list_yolo_form:
-            x = list(rect)[0]
-            xi = np.searchsorted(lat,x)
-            
-            if xi == 1:
-                long[i] = list(rect)[1]
-                i += 1
-        pt = list(list_yolo_form[-1])
-        long[-1] = pt[1] - pt[3]
-        long = np.flip(long)
-        
-        find_index_on_puzzle(549, 636, lat, long)
-    
-    # # Following are a whole
-    # else:
-        # "Note: kernel size is depend on the puzzle in image"
-        # kernel = np.ones((50,50),np.uint8)
-        # # dilate = cv2.dilate(img2,kernel,iterations = 10)
-        # # erosion = cv2.erode(dilate, kernel, iterations = 10)
-        # # 
-        # closing = cv2.morphologyEx(img2, cv2.MORPH_CLOSE, kernel)
-        # opening = cv2.morphologyEx(img2, cv2.MORPH_OPEN, kernel)
-        # if True:
-            # cv2.imshow('erosion', opening)
-            # k = cv2.waitKey(0)
-            # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
-            # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
-                # cv2.destroyAllWindows()
-        # list_contour, list_yolo_form = get_rect(opening, bg='black', mask=True)
-        
-    return list_contour, list_yolo_form
     
 def object_get_rect(cam, warped, role):
     obj = cam.color_filter(warped, 
@@ -311,7 +255,9 @@ def object_get_rect(cam, warped, role):
         sys.exit(1)
             
     list_contour, list_yolo_form = get_rect(
-            obj, bg='black', skew=False, area=cam.dict_role_hsv[role]["area"])
+            obj, bg='black', skew=False, 
+            area=cam.dict_role_hsv[role]["area"],
+            scale=cam.dict_role_hsv[role]["scale"])
     return list_contour, list_yolo_form
     
 def test():
@@ -344,22 +290,26 @@ def test():
         # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
         # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
             # cv2.destroyAllWindows()
-    img_parser = imgParser(num_row=7, num_col=8)
-    img_parser.build_grid_center_points(puzzle_w=cam.warped_w, puzzle_h=cam.warped_h)
+    
+    matrix = []
+    parentdir = os.path.dirname(base_dir)
+    with open(os.path.join(parentdir, 'pySokoban', 'levels', level_set + '/level'+str(current_level))) as f:
+        for row in f.read().splitlines():
+            matrix.append(list(row))
+    img_parser = imgParser(matrix, puzzle_w=cam.warped_w, puzzle_h=cam.warped_h)
     
     xi, yi = img_parser.find_index_on_puzzle(
         x=list(robot_yolo_form[0])[0], y=list(robot_yolo_form[0])[1])
+    print('robot x_idx {} y_idx {}'.format(xi, yi))
     for box in box_yolo_form:
         xi, yi = img_parser.find_index_on_puzzle(
         x=list(box)[0], y=list(box)[1])
-        
+        print('box x_idx {} y_idx {}'.format(xi, yi))
     
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         fn = sys.argv[1]
     else:
-        fn = os.path.join(base_dir, 'map/2.png') # 'shapes.png'
-    img2 = cv2.imread(fn)
+        fn = os.path.join(base_dir, 'map/2.png')
     
-    # main(img2, merge_grid=True)
     test()

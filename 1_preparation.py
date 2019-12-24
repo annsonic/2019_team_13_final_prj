@@ -38,6 +38,10 @@ def main(cam_id=1,
     print("Step(1) Manually check view coverage and shoot chessboard images")
     print("Please allow the chessboard to cover the field of view as much as possible")
     if preview_camera:
+        if do_calibration:
+            for name in ['cam_mtx.npy', 'dist.npy', 'newcam_mtx.npy']:
+            if os.path.isfile(os.path.join(cam.folder, name)):
+                os.remove(os.path.join(cam.folder, name))
         cam.camera_view()
     
     print("Step(2) Calibrate camera")
@@ -101,4 +105,5 @@ if __name__ == '__main__':
     main(cam_id=1,
          host='192.168.0.126')
     
+    # # Test perspective transformation effect
     # test()

@@ -1,3 +1,5 @@
+import enum
+
 dict_hsv = {
             "light_green": (46, 30, 0),
             "dark_green": (100, 255, 255),
@@ -48,3 +50,42 @@ dict_symbol = {
             "goal": ".",
             "floor": " "
             }
+            
+unit_pace_length = 0.19 # unit:m
+            
+class MPI_Rank(enum.IntEnum):
+    MASTER = 0
+    ROBOT = 1
+    USER = 2
+    CAMERA = 3
+    
+class Instruction(enum.Enum):
+    INIT = 0
+    EXIT = 1
+    # -------------- Instr of CAMERA ---------------
+    BB = 2 # Calculate bounding box and send
+    DISPLAY = 3
+    HIDING = 4
+    # -------------- Instr of ROBOT ----------------
+    SPEAK = 11
+    NOD = 12
+    DETECT_FACE = 13
+    ROBOT_GUIDE = 14
+    MOVE = 15
+    # -------------- Instr of User ----------------
+    PLAY = 21
+
+class MyoGesture(enum.IntEnum):
+    SPREAD = 0
+    WAVE_RIGHT = 1
+    WAVE_LEFT = 2
+    FIST = 3
+    DOUBLE_TAP = 4
+    
+class RobotMotion(enum.IntEnum):
+    BACKWARD = 0
+    RIGHT = 1
+    LEFT = 2
+    FORWARD = 3
+    HELP = 4
+    EXIT = 5

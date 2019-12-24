@@ -365,7 +365,7 @@ class mySokoban():
             # self.myEnvironment.screen.fill((0, 0, 0))
             print("Level Completed")
             self.current_level += 1
-            self.initLevel(self.level_set,self.current_level)
+            self.initLevel()
 		
     def initLevel(self):
         # Create an instance of this Level
@@ -382,8 +382,9 @@ def main():
     game = mySokoban()
     # Initialize Level
     game.initLevel()
-
-    while True:
+    
+    game_ing = True
+    while game_ing:
         
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -418,7 +419,12 @@ def main():
                     sys.exit()
             elif event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit()
+                # sys.exit()
+                game_ing = False
+                break
+        
+    return 0
 
 if __name__ == '__main__':
     main()
+    sys.exit(0)

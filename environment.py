@@ -254,9 +254,10 @@ def pseudo_play(comm, rank, game,
             break
             
         if (len(game.myLevel.getBoxes()) == 0):
+            comm.send((Instruction.EXIT,), dest=MPI_Rank.USER)
             print("Level Completed")
             sys.stdout.flush()
-            comm.send((Instruction.EXIT,), dest=MPI_Rank.USER)
+            
             break
         else:
             comm.send((Instruction.PLAY,), dest=MPI_Rank.USER)
@@ -312,13 +313,15 @@ def pseudo_main(comm, rank):
             
             print('\tenv got', ret)
             sys.stdout.flush()
+            
             comm.send(ret, dest=MPI_Rank.MASTER)
-            
-            
         elif (inst == Instruction.PLAY):
             print('--- Lets play ---')
             sys.stdout.flush()
-            pseudo_play(comm, rank)
+
+            pseudo_play(comm, rank, game, times=1000)
+            
+            comm.send(ret, dest=MPI_Rank.MASTER)
         elif (inst == Instruction.EXIT):
             comm.send((Instruction.EXIT,), dest=MPI_Rank.CAMERA)
             print('--- camera bye~ ---')

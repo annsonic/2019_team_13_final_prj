@@ -73,6 +73,7 @@ def game(comm):
     # Polling MPI.isend is done
     for req in reqs:
         req.wait()
+    ret = comm.recv(source=MPI_Rank.ROBOT)
     
 def congratuation(comm):
     pass
@@ -109,8 +110,8 @@ def main(cam_id=0,
         if has_robot:
             welcome(comm)
             accessory_in_position(comm, flag_exclude_robot=True)
-        training_user(comm)
-            # accessory_in_position(comm, flag_exclude_robot=False)
+        # training_user(comm)
+            # # accessory_in_position(comm, flag_exclude_robot=False)
         # game(comm)
         # congratuation(comm)
         exit(comm)
@@ -162,7 +163,7 @@ if __name__ == '__main__':
     main(cam_id=0, 
          has_robot=False, 
          host='192.168.50.216',
-         ctrl_type="keyboard")
+         ctrl_type="myo")
     
     # if len(sys.argv) > 1:
         # fn = sys.argv[1]

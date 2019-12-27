@@ -1,5 +1,13 @@
 import enum
 
+user_title = "Xiao_he"
+
+dict_title = {
+    "Xiao_he": "帥氣的大哥哥",
+    "class_mate_he": "大哥哥",
+    "class_mate_she": "漂亮的姊姊",
+    "professor": "dear professor"}
+
 dict_hsv = {
             "light_green": (46, 30, 0),
             "dark_green": (100, 255, 255),

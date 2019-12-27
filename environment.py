@@ -1,21 +1,62 @@
 import os
 import sys
+import pygame
+import numpy as np
+import copy
 base_dir = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(os.path.join(base_dir, 'SokobanSolver'))
 # sys.path.append(os.path.join(base_dir, 'Vision'))
-# sys.path.append(os.path.join(base_dir, 'pySokoban'))
 # from Vision import coordinates
 # from coordinates import imgParser
 # from pySokoban.Level import Level
+from threading import Thread
+import SokobanSolver
+import SokobanSolver.sokoban as Solver_s
+import SokobanSolver.puzzler as puzzler
+import SokobanSolver.search as search
+from puzzler import *
 from zenbo_junior import myRobot
 from constants import MPI_Rank
 from constants import Instruction
 from constants import MyoGesture
 from constants import RobotMotion
+from constants import current_level
+from constants import level_set
 
 
-def init(host):
-    robot = myRobot(host)
-    return robot
+class Solver(Thread):
+    def __init__(self, level_set, current_level):
+        super().__init__()
+        self.warehouse = Solver_s.Warehouse()
+        pySokoban_root = os.path.join(base_dir, 'pySokoban')
+        maze_path = os.path.join(pySokoban_root, 'levels', level_set)
+        self.warehouse.read_warehouse_file(
+			os.path.join(maze_path, 'level'+str(current_level)))
+        
+        self.puzzle = SokobanPuzzle(self.warehouse)
+        self.solution = None
+        self.path = []
+        self.started = False
+        self.list_actions = []
+
+    def run(self):
+        self.solution = search.breadth_first_graph_search(self.puzzle)
+
+        self.list_actions = [node.action for node in self.solution.path()]
+        self.list_actions.pop(0)
+        # print(list_event)
+        
+    def parse_matrix_to_str(self, matrix):
+        # print(self.myLevel.matrix)
+        ret = []
+        for list_m in matrix:
+            s = "".join(str(m) for m in list_m)
+            s += "\n"
+            ret.append(s)
+        # return ret
+        self.warehouse.extract_locations(ret)
+
+
 
 def play(comm, rank, robot):
     while True:
@@ -36,7 +77,6 @@ def play(comm, rank, robot):
             break
 
 def main(comm, rank):
-    robot = None
     
     while True:
         data = comm.recv(source=MPI_Rank.MASTER)
@@ -44,17 +84,20 @@ def main(comm, rank):
         print('inst', inst)
         sys.stdout.flush()
         if (inst == Instruction.INIT):
-            if len(data) == 2:
+            if len(data) == 3:
                 host = data[1]
+                cam_id = data[2]
             else:
                 raise ValueError("Xinyi: missing param host")
                 sys.exit(1)
             
-            robot = init(host)
-        
-        elif (robot is None):
-            raise ValueError("Xinyi: We should connect with robot first")
-            sys.exit(1)
+            robot = myRobot(host)
+            
+            reqs = []
+            reqs.append(comm.isend((Instruction.INIT,cam_id), dest=MPI_Rank.CAMERA))
+            reqs.append(comm.isend((Instruction.DISPLAY,), dest=MPI_Rank.CAMERA))
+            for req in reqs:
+                req.wait()
         
         elif (inst == Instruction.SPEAK):
             if len(data) == 2:
@@ -103,50 +146,152 @@ def main(comm, rank):
         elif (inst == Instruction.EXIT):
             if robot is not None:
                 robot.release()
-            
+            comm.send((Instruction.EXIT,), dest=MPI_Rank.CAMERA)
             break
         
         else:
             print('Invalid instruction in environment.py!!!!')
             sys.exit(1)
             
-def pseudo_main(comm, rank):
+        
+def pseudo_play(comm, rank):
     sys.path.append(os.path.join(base_dir, 'pySokoban'))
-    import pygame
+    
     import pySokoban
     from pySokoban import sokoban
+    game = sokoban.mySokoban(level=current_level)
+    game.initLevel()
     
-    hub = None
-    listener = None
-    ret = 1
-    
-    while (ret == 1):
+    help_ing = False
+    list_actions = []
+    current_suggestion = ""
+    while True:
+        comm.send((Instruction.DISPLAY,), dest=MPI_Rank.CAMERA)
+        
+        data = comm.recv(source=MPI_Rank.USER)
+        inst = data[0]
+        # sys.stdout.flush()
+        # print("Play", inst)
+        
+        event = pygame.event.poll() # work-around for pygame.display.update() got stuck
+        if inst == RobotMotion.LEFT:
+            if help_ing:
+                if current_suggestion != "Left":
+                    print("Ohhh, please pose {} again".format(current_suggestion))
+                    sys.stdout.flush()
+                    continue
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        print('Next, please move {}'.format(current_suggestion))
+                        sys.stdout.flush()
+            print('\tleft')
+            sys.stdout.flush()
+            game.movePlayer("L")
+            
+            
+        elif inst == RobotMotion.RIGHT:
+            if help_ing:
+                if current_suggestion != "Right":
+                    print("Ohhh, please pose {} again".format(current_suggestion))
+                    sys.stdout.flush()
+                    continue
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        print('Next, please move {}'.format(current_suggestion))
+                        sys.stdout.flush()
+            print('\tright')
+            sys.stdout.flush()
+            game.movePlayer("R")
+        elif inst == RobotMotion.BACKWARD:
+            if help_ing:
+                if current_suggestion != "Down":
+                    print("Ohhh, please pose {} again".format(current_suggestion))
+                    sys.stdout.flush()
+                    continue
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        print('Next, please move {}'.format(current_suggestion))
+                        sys.stdout.flush()
+            print('\tbackward')
+            sys.stdout.flush()
+            game.movePlayer("D")
+        elif inst == RobotMotion.FORWARD:
+            if help_ing:
+                if current_suggestion != "Up":
+                    print("Ohhh, please pose {} again".format(current_suggestion))
+                    sys.stdout.flush()
+                    continue
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        print('Next, please move {}'.format(current_suggestion))
+                        sys.stdout.flush()
+            print('\tforward')
+            sys.stdout.flush()
+            game.movePlayer("U")
+        elif inst == RobotMotion.HELP:
+            print('\tCall for solution')
+            sys.stdout.flush()
+            help_ing = True
+            
+            solution = Solver(level_set, current_level)
+            solution.parse_matrix_to_str(game.myLevel.matrix)
+            solution.start()
+            solution.join()
+            
+            # print('len', len(solution.list_actions))
+            list_actions = copy.copy(solution.list_actions)
+            if len(solution.list_actions)>0:
+                current_suggestion = list_actions.pop(0)
+                print('Please move {}'.format("Left"))
+                sys.stdout.flush()
+        elif inst == RobotMotion.EXIT:
+            break
+            
+        if (len(game.myLevel.getBoxes()) == 0):
+            print("Level Completed")
+            sys.stdout.flush()
+            comm.send((Instruction.EXIT,), dest=MPI_Rank.USER)
+            break
+        else:
+            comm.send((Instruction.PLAY,), dest=MPI_Rank.USER)
+
+def pseudo_main(comm, rank):
+    while True:
         data = comm.recv(source=MPI_Rank.MASTER)
         inst = data[0]
         
+        print("Env", inst)
+        sys.stdout.flush()
         if inst == Instruction.INIT:
-            if len(data) == 2:
-                ctrl_type = data[1]
+            if len(data) == 3:
+                cam_id = data[2]
             else:
-                raise ValueError("Xinyi: missing param ctrl_type")
+                raise ValueError("Xinyi: missing param cam_id")
                 sys.exit(1)
-            # hub, listener = init(ctrl_type)
             
-            game = sokoban.mySokoban()
-            game.initLevel()
+            reqs = []
+            reqs.append(comm.isend((Instruction.INIT,cam_id), dest=MPI_Rank.CAMERA))
+            reqs.append(comm.isend((Instruction.DISPLAY,), dest=MPI_Rank.CAMERA))
+            for req in reqs:
+                req.wait()
             
-            game_ing = True
-            while game_ing:
-                pygame.quit()
-                game_ing = False
-                break
+        elif (inst == Instruction.PLAY):
+            print('--- Lets play ---')
+            sys.stdout.flush()
+            pseudo_play(comm, rank)
+        elif (inst == Instruction.EXIT):
+            comm.send((Instruction.EXIT,), dest=MPI_Rank.CAMERA)
             
-        elif inst == Instruction.EXIT:
             break
         else:
+            print('!!!! Invalid instruction in envronment !!!!')
             sys.stdout.flush()
-            print('Invalid instruction!!!!')
             sys.exit(1)
+            
     
 
 if __name__ == '__main__':

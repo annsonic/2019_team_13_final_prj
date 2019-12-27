@@ -1,42 +1,13 @@
 import sys
 import os
-import numpy as np
-import time
-from threading import Thread
-
+import pygame
 base_dir = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(os.path.join(base_dir, 'SokobanSolver'))
 sys.path.append(os.path.join(base_dir, 'myo-python'))
-import SokobanSolver
-import SokobanSolver.sokoban as Solver_s
-from SokobanSolver import search
-from SokobanSolver import puzzler
-from puzzler import *
-
 import myo
+from constants import MPI_Rank
+from constants import Instruction
+from constants import RobotMotion
 
-
-class Solver(Thread):
-    def __init__(self, level_set, current_level):
-        super().__init__()
-        self.warehouse = Solver_s.Warehouse()
-        pySokoban_root = os.path.join(base_dir, 'pySokoban')
-        maze_path = os.path.join(pySokoban_root, 'levels', level_set)
-        self.warehouse.read_warehouse_file(
-			os.path.join(maze_path, 'level'+str(current_level)))
-        
-        self.puzzle = SokobanPuzzle(self.warehouse)
-        self.solution = None
-        self.path = []
-        self.started = False
-        self.list_actions = []
-
-    def run(self):
-        self.solution = search.breadth_first_graph_search(self.puzzle)
-
-        self.list_actions = [node.action for node in self.solution.path()]
-        self.list_actions.pop(0)
-        # print(list_event)
 
 class Listener(myo.DeviceListener):
     
@@ -71,7 +42,7 @@ class Listener(myo.DeviceListener):
     def on_pose(self, event):
         if event.pose != self.lastpose:
             self.lastpose = event.pose
-            print(type(self.lastpose))
+            # print(type(self.lastpose))
             # sys.stdout.write("\rNow the pose is %s", self.lastpose)
             # sys.stdout.flush()
             print("Pose: ", self.lastpose)
@@ -81,94 +52,164 @@ class Listener(myo.DeviceListener):
             pass
         if event.pose == myo.Pose.double_tap:
             return False
-            
-def action(listener):
-    if listener.lastpose == myo.Pose.fingers_spread:
-        cmd = "Down"
-    elif listener.lastpose == myo.Pose.fist:
-        cmd = "Up"
-    elif listener.lastpose == myo.Pose.wave_in:
-        cmd = "Left"
-    elif listener.lastpose == myo.Pose.wave_out:
-        cmd = "Right"
+    def print_pose(self):
+        return self.lastpose
 
-    elif listener.lastpose == myo.Pose.double_tap:
-        cmd = "Help"
+def init(ctrl_type):
+    hub = None
+    listener = None
     
-    comm.send(cmd, dest=rank-1)
-    
-    if cmd == "Help":
-        list_str = comm.recv(source=rank-1)
-        
-        if list_str is None:
-            cmd = "Quit"
-            comm.send(cmd, dest=rank-1)
-            sys.exit(1)
-            
-        print('start solver')
-        solution = Solver(level_set, current_level)
-        solution.warehouse.extract_locations(list_str)
-        solution.start()
-        solution.join()
-        # print(solution.list_actions)
-        
-        if solution.list_actions is not None:
-            comm.send(solution.list_actions, dest=rank-1)
-        else:
-            comm.send([], dest=rank-1)
-
-def main(comm, rank, level_set, current_level, has_myo=False):
-    
-    if has_myo:
+    if ctrl_type == "keyboard":
+        pass
+    elif ctrl_type == "myo":
         myo.init(sdk_path=os.path.join(base_dir, 'myo-sdk-win-0.9.0'))
         hub = myo.Hub()
-        arm = myo.Arm
+        # arm = myo.Arm
         # print("Myo is connected with : ", arm.name)
         listener = Listener()
         print("listening ....")
+        
+    return hub, listener
+
+def main(comm, rank):
+    hub = None
+    listener = None
     
-    if (comm is not None) and (rank is not None):
-        flag_ready = comm.recv(source=rank-1)
-        if flag_ready:
-            cmd = ""
+    while True:
+        data = comm.recv(source=MPI_Rank.MASTER)
+        inst = data[0]
+        sys.stdout.flush()
+        if inst == Instruction.INIT:
             
-            if has_myo:
-                while hub.run(listener.on_event, 50):
-                    action(listener)
-                    time.sleep(1)
-            else:
-                cmd = "Help"
-                comm.send(cmd, dest=rank-1)
+            # hub, listener = init(ctrl_type)
+            print('hub', hub, 'listener', listener)
+        elif inst == Instruction.ROBOT_GUIDE:
+            pass
+                
+        elif inst == Instruction.EXIT:
+            break
+        else:
+            print('Invalid instruction!!!!')
+            sys.exit(1)
+
+###
+def pseudo_wait(time):
+    """
+    Makes the program halt for 'time' seconds or until the user press Quit on the window.
     
-                if cmd == "Help":
-                    list_str = comm.recv(source=rank-1)
-                    
-                    if list_str is None:
-                        cmd = "Quit"
-                        comm.send(cmd, dest=rank-1)
-                        
-                    print('start solver')
-                    solution = Solver(level_set, current_level)
-                    solution.warehouse.extract_locations(list_str)
-                    solution.start()
-                    solution.join()
-                    # print(solution.list_actions)
-                    
-                    if solution.list_actions is not None:
-                        comm.send(solution.list_actions, dest=rank-1)
-                    else:
-                        comm.send([], dest=rank-1)
-                    
-                    # has_robot = comm.recv(source=rank-1)
-                    # if has_robot:
-                        # idx = 0
-                        # while idx != len(solution.list_actions):
-                            # step_idx = comm.recv(source=rank-1)
-            print('Bye, bye!')
+    """
+    
+    clock = pygame.time.Clock()
+    waiting = True
+    event = None
+    while waiting:
+        dt = clock.tick(30) / 1000  # Takes the time between each loop and convert to seconds.
+        time -= dt
+        
+        event = pygame.event.poll()
+        if (event.type == pygame.KEYDOWN) or (event.type == pygame.QUIT):
+            waiting = False
+        if time <= 0:
+            waiting = False
+
+    return  event
+
+def pseudo_play(comm, times=None):
+    
+    counter = 0
+    while (counter<times):
+        
+        if times > 1:
+            event = pseudo_wait(time=5)
+        else:
+            event = pygame.event.poll()
+        
+        if event.type == pygame.KEYDOWN:
+            # print('\tUser', event)
+            # sys.stdout.flush()
+            if event.key == pygame.K_LEFT:
+                comm.send((RobotMotion.LEFT,), dest=MPI_Rank.ROBOT)
+            elif event.key == pygame.K_RIGHT:
+                comm.send((RobotMotion.RIGHT,), dest=MPI_Rank.ROBOT)
+            elif event.key == pygame.K_DOWN:
+                comm.send((RobotMotion.BACKWARD,), dest=MPI_Rank.ROBOT)
+            elif event.key == pygame.K_UP:
+                comm.send((RobotMotion.FORWARD,), dest=MPI_Rank.ROBOT)
+            
+            elif event.key == pygame.K_ESCAPE:
+                comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+                pygame.quit()
+                counter = times + 1
+                break
+        
+        elif event.type == pygame.QUIT:
+            comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+            pygame.quit()
+            counter = times + 1
+            break
+        elif event is None:
+            comm.send((RobotMotion.HELP,), dest=MPI_Rank.ROBOT)
+        else:
+            continue
+        
+        counter += 1
+        print('\tuser counter', counter)
+        sys.stdout.flush()
+        if times > 1:
+            data = comm.recv(source=MPI_Rank.ROBOT)
+            inst = data[0]
+            if (inst == Instruction.EXIT):
+                comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+                pygame.quit()
+                break
+        
+            
+def pseudo_main(comm, rank):
+    while True:
+        data = comm.recv(source=MPI_Rank.MASTER)
+        inst = data[0]
+        
+        print("Control", inst)
+        sys.stdout.flush()
+        if inst == Instruction.INIT:
+            pygame.init()
+            display_surface = pygame.display.set_mode((400, 100))
+            pygame.display.set_caption('Robot Controller')
+            font = pygame.font.Font(pygame.font.get_default_font(), 14)
+            text_surface = font.render('Press arrow keys in this window', 
+                                        True, pygame.Color('orange'))
+            display_surface.blit(text_surface, dest=(80,40))
+            pygame.display.flip()
+        elif inst == Instruction.ROBOT_GUIDE:
+            print('\t--- User practice ---')
+            sys.stdout.flush()  
+            
+            # wait for robot
+            gaming = comm.recv(source=MPI_Rank.ROBOT)
+            print('\tuser hear robot', gaming)
+            sys.stdout.flush()
+            
+            pseudo_play(comm, times=1)
+            
+            print('end training')
+            sys.stdout.flush()
+        elif inst == Instruction.PLAY:
+            print('\t--- Pygame Listen ---')
+            sys.stdout.flush()
+            pseudo_play(comm)
+        elif inst == Instruction.EXIT:
+            print('\t--- Pygame Bye~ ---')
+            sys.stdout.flush()
+            pygame.quit()
+            break
+        else:
+            print('\t!!!! Invalid instruction in control !!!!')
+            sys.stdout.flush()
+            sys.exit(1)
+            break
 
 if __name__ == '__main__':
     comm = None
     rank = None
-    level_set = 'magic_sokoban6'
-    current_level = 7
-    main(comm, rank, level_set, current_level)
+    
+    main(comm, rank)

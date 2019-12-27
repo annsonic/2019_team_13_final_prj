@@ -48,17 +48,23 @@ def training_user(comm):
                  {"sentence": "我們先來練習一下咩", "mood": "positive"}]
     comm.send((Instruction.SPEAK,list_dict), dest=MPI_Rank.ROBOT)
     list_list_dict = [
-                 (MyoGesture.FIST, [{"sentence": "出拳是前進 請你出拳", "mood": "positive"}]),
-                 (MyoGesture.SPREAD, [{"sentence": "手掌張開是後退 請你張開手掌", "mood": "positive"}]),
-                 (MyoGesture.WAVE_RIGHT, [{"sentence": "手掌朝右是走右邊 請你指揮", "mood": "positive"}]),
-                 (MyoGesture.WAVE_LEFT, [{"sentence": "手掌朝左是走左邊 請你指揮", "mood": "positive"}])
+                 ("Up", [{"sentence": "出拳是前進 請你出拳", "mood": "positive"}]),
+                 ("Down", [{"sentence": "手掌張開是後退 請你張開手掌", "mood": "positive"}]),
+                 ("Right", [{"sentence": "手掌朝右是走右邊 請你指揮", "mood": "positive"}]),
+                 ("Left", [{"sentence": "手掌朝左是走左邊 請你指揮", "mood": "positive"}])
                  ]
+    
+    
     for (gesture, list_dict) in list_list_dict:
-        comm.send((Instruction.ROBOT_GUIDE,(gesture, list_dict)), 
-                dest=MPI_Rank.ROBOT)
-        comm.send((Instruction.PLAY,), dest=MPI_Rank.USER)
-        ##TODO
-        # ret = comm.recv(source=MPI_Rank.ROBOT)
+        while True:
+            comm.send((Instruction.ROBOT_GUIDE,(gesture, list_dict)), 
+                    dest=MPI_Rank.ROBOT)
+            comm.send((Instruction.ROBOT_GUIDE,), dest=MPI_Rank.USER)
+            ret = comm.recv(source=MPI_Rank.ROBOT)
+            print('\tmaster got', ret)
+            sys.stdout.flush()
+            if ret:
+                break
     
 def game(comm):
     reqs = []
@@ -101,9 +107,9 @@ def main(cam_id=0,
         init(comm, cam_id, host)
         
         if has_robot:
-            # welcome(comm)
-            # accessory_in_position(comm, flag_exclude_robot=True)
-            training_user(comm)
+            welcome(comm)
+            accessory_in_position(comm, flag_exclude_robot=True)
+        training_user(comm)
             # accessory_in_position(comm, flag_exclude_robot=False)
         # game(comm)
         # congratuation(comm)

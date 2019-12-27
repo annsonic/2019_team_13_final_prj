@@ -5,6 +5,10 @@ import numpy as np
 import copy
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(base_dir, 'SokobanSolver'))
+sys.path.append(os.path.join(base_dir, 'pySokoban'))
+import pySokoban
+# from pySokoban import sokoban
+from pySokoban.sokoban import mySokoban
 # sys.path.append(os.path.join(base_dir, 'Vision'))
 # from Vision import coordinates
 # from coordinates import imgParser
@@ -154,32 +158,30 @@ def main(comm, rank):
             sys.exit(1)
             
         
-def pseudo_play(comm, rank):
-    sys.path.append(os.path.join(base_dir, 'pySokoban'))
+def pseudo_play(comm, rank, game, 
+        times=1, help_ing=False, list_actions=[], current_suggestion = ""):
     
-    import pySokoban
-    from pySokoban import sokoban
-    game = sokoban.mySokoban(level=current_level)
-    game.initLevel()
-    
-    help_ing = False
-    list_actions = []
-    current_suggestion = ""
-    while True:
+    counter = 0
+    while (counter < times):
         comm.send((Instruction.DISPLAY,), dest=MPI_Rank.CAMERA)
+        print('\tenv call camera')
+        sys.stdout.flush()
+
         
         data = comm.recv(source=MPI_Rank.USER)
         inst = data[0]
-        # sys.stdout.flush()
-        # print("Play", inst)
         
+        print("Robot Play", inst)
+        sys.stdout.flush()
+        
+        counter += 1
         event = pygame.event.poll() # work-around for pygame.display.update() got stuck
         if inst == RobotMotion.LEFT:
             if help_ing:
                 if current_suggestion != "Left":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    continue
+                    return False
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -195,7 +197,7 @@ def pseudo_play(comm, rank):
                 if current_suggestion != "Right":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    continue
+                    return False
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -209,7 +211,7 @@ def pseudo_play(comm, rank):
                 if current_suggestion != "Down":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    continue
+                    return False
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -223,7 +225,7 @@ def pseudo_play(comm, rank):
                 if current_suggestion != "Up":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    continue
+                    return False
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -258,6 +260,8 @@ def pseudo_play(comm, rank):
             break
         else:
             comm.send((Instruction.PLAY,), dest=MPI_Rank.USER)
+            
+    return True
 
 def pseudo_main(comm, rank):
     while True:
@@ -279,13 +283,46 @@ def pseudo_main(comm, rank):
             for req in reqs:
                 req.wait()
             
+            game = mySokoban(level=current_level)
+            game.initLevel()
+        elif (inst == Instruction.DETECT_FACE):
+            pass
+        elif (inst == Instruction.SPEAK):
+            pass
+        elif (inst == Instruction.ROBOT_GUIDE):
+            print('--- Lets practice ---')
+            sys.stdout.flush()
+            
+            if len(data) == 2:
+                (gesture, list_dict) = data[1]
+            else:
+                raise ValueError("Xinyi: missing param (gesture, list_dict)")
+                sys.exit(1)
+            
+            for d in list_dict:
+                print(d["sentence"])
+                sys.stdout.flush()
+                
+            comm.send(("start",), dest=MPI_Rank.USER)
+            print('\tenv call user', 'True')
+            sys.stdout.flush()
+        
+            ret = pseudo_play(comm, rank, game, times=1, 
+                help_ing=True, list_actions=[], current_suggestion = gesture)
+            
+            print('\tenv got', ret)
+            sys.stdout.flush()
+            comm.send(ret, dest=MPI_Rank.MASTER)
+            
+            
         elif (inst == Instruction.PLAY):
             print('--- Lets play ---')
             sys.stdout.flush()
             pseudo_play(comm, rank)
         elif (inst == Instruction.EXIT):
             comm.send((Instruction.EXIT,), dest=MPI_Rank.CAMERA)
-            
+            print('--- camera bye~ ---')
+            sys.stdout.flush()
             break
         else:
             print('!!!! Invalid instruction in envronment !!!!')

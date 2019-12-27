@@ -62,30 +62,122 @@ class Solver(Thread):
 
 
 
-def play(comm, rank, robot):
-    while True:
+def play(comm, rank, game, 
+        times=1, help_ing=False, list_actions=[], current_suggestion = ""):
+    counter = 0
+    while (counter < times):
+        comm.send((Instruction.DISPLAY,), dest=MPI_Rank.CAMERA)
+        print('\tenv call camera')
+        sys.stdout.flush()
+
+        
         data = comm.recv(source=MPI_Rank.USER)
         inst = data[0]
-        print('user_inst', inst)
-        sys.stdout.flush()
         
-        if (inst == RobotMotion.BACKWARD):
-            robot.backward()
-        elif (inst == RobotMotion.RIGHT):
-            robot.right()
-        elif (inst == RobotMotion.LEFT):
+        print("Robot Play", inst)
+        sys.stdout.flush()
+        counter += 1
+        
+        if inst == RobotMotion.LEFT:
+            if help_ing:
+                if current_suggestion != "Left":
+                    robot.say(line="哎呀 可能Myo認錯手勢了 看成{}".format("左邊"), mood="negative")
+                    robot.say(line="請你再做一次手勢哦", mood="negative")
+                    return False, current_suggestion, list_actions
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        robot.say(line='下一步 請走 {}'.format(current_suggestion), 
+                                mood="positive")
+            print('\tleft')
+            sys.stdout.flush()
             robot.left()
-        elif (inst == RobotMotion.FORWARD):
+        elif inst == RobotMotion.RIGHT:
+            if help_ing:
+                if current_suggestion != "Right":
+                    robot.say(line="哎呀 可能Myo認錯手勢了 看成{}".format("右邊"), mood="negative")
+                    robot.say(line="請你再做一次手勢哦", mood="negative")
+                    return False, current_suggestion, list_actions
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        robot.say(line='下一步 請走 {}'.format(current_suggestion), 
+                                mood="positive")
+            print('\tright')
+            sys.stdout.flush()
+            robot.right()
+        elif inst == RobotMotion.BACKWARD:
+            if help_ing:
+                if current_suggestion != "Down":
+                    robot.say(line="哎呀 可能Myo認錯手勢了 看成{}".format("後退"), mood="negative")
+                    robot.say(line="請你再做一次手勢哦", mood="negative")
+                    return False, current_suggestion, list_actions
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        robot.say(line='下一步 請走 {}'.format(current_suggestion), 
+                                mood="positive")
+            print('\tbackward')
+            sys.stdout.flush()
+            robot.backward()
+        elif inst == RobotMotion.FORWARD:
+            if help_ing:
+                if current_suggestion != "Up":
+                    robot.say(line="哎呀 可能Myo認錯手勢了 看成{}".format("前進"), mood="negative")
+                    robot.say(line="請你再做一次手勢哦", mood="negative")
+                    return False, current_suggestion, list_actions
+                else:
+                    if len(list_actions)>0:
+                        current_suggestion = list_actions.pop(0)
+                        robot.say(line='下一步 請走 {}'.format(current_suggestion), 
+                                mood="positive")
+            print('\tforward')
+            sys.stdout.flush()
             robot.forward()
-        elif (inst == RobotMotion.EXIT):
+        elif inst == RobotMotion.HELP:
+            if help_ing:
+                robot.say(line='請別急 我一定會幫你的', mood="positive")
+                
+            else:
+                print('\tCall for solution')
+                sys.stdout.flush()
+                help_ing = True
+                
+                solution = Solver(level_set, current_level)
+                solution.parse_matrix_to_str(game.myLevel.matrix)
+                solution.start()
+                solution.join()
+            
+                # print('len', len(solution.list_actions))
+                list_actions = copy.copy(solution.list_actions)
+                if len(list_actions)>0:
+                    current_suggestion = list_actions.pop(0)
+            
+            robot.say(line='請指揮我走 {}'.format(current_suggestion), 
+                                mood="positive")
+            
+            return False, current_suggestion, list_actions
+        elif inst == RobotMotion.EXIT:
             break
+        if not help_ing:
+            if (len(game.myLevel.getBoxes()) == 0):
+                comm.send((Instruction.EXIT,), dest=MPI_Rank.USER)
+                print("Level Completed")
+                sys.stdout.flush()
+                
+                break
+            
+            else:
+                comm.send((Instruction.PLAY,), dest=MPI_Rank.USER)
+            
+    return True, True, list_actions
 
 def main(comm, rank):
     
     while True:
         data = comm.recv(source=MPI_Rank.MASTER)
         inst = data[0]
-        print('inst', inst)
+        print('Env', inst)
         sys.stdout.flush()
         if (inst == Instruction.INIT):
             if len(data) == 3:
@@ -125,6 +217,9 @@ def main(comm, rank):
             robot.detect_face()
         
         elif (inst == Instruction.ROBOT_GUIDE):
+            print('--- Lets practice ---')
+            sys.stdout.flush()
+            
             if len(data) == 2:
                 (gesture, list_dict) = data[1]
             else:
@@ -133,15 +228,15 @@ def main(comm, rank):
             
             for d in list_dict:
                 robot.say(line=d["sentence"], mood=d["mood"])
-            ## TODO: listen to User
-            # response = comm.recv(source=MPI_Rank.USER)
-            # if response == gesture:
-                # robot.move(mood)
-            # if gesture == MyoGesture.FIST:
-                # print('xinyi', 'Bingo!!!')
-                ## TODO: tell master go next step
-                # comm.send((Instruction.ROBOT_GUIDE, True), dest=MPI_Rank.ROBOT)
-            # else:
+            
+            comm.send(("start",), dest=MPI_Rank.USER)
+            print('\tenv call user', 'True')
+            sys.stdout.flush()
+            
+            ret, gesture, list_actions = play(comm, rank, game, times=1, 
+                help_ing=True, list_actions=[], current_suggestion = gesture)
+            
+            comm.send(ret, dest=MPI_Rank.MASTER)
             #   robot.say(line="哎呀Myo認錯手勢了 請你再做一次手勢", mood="negative")
         elif (inst == Instruction.PLAY):
             print('--- Lets play ---')
@@ -181,7 +276,7 @@ def pseudo_play(comm, rank, game,
                 if current_suggestion != "Left":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    return False
+                    return False, current_suggestion, list_actions
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -197,7 +292,7 @@ def pseudo_play(comm, rank, game,
                 if current_suggestion != "Right":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    return False
+                    return False, current_suggestion, list_actions
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -211,7 +306,7 @@ def pseudo_play(comm, rank, game,
                 if current_suggestion != "Down":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    return False
+                    return False, current_suggestion, list_actions
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -225,7 +320,7 @@ def pseudo_play(comm, rank, game,
                 if current_suggestion != "Up":
                     print("Ohhh, please pose {} again".format(current_suggestion))
                     sys.stdout.flush()
-                    return False
+                    return False, current_suggestion, list_actions
                 else:
                     if len(list_actions)>0:
                         current_suggestion = list_actions.pop(0)
@@ -235,34 +330,42 @@ def pseudo_play(comm, rank, game,
             sys.stdout.flush()
             game.movePlayer("U")
         elif inst == RobotMotion.HELP:
-            print('\tCall for solution')
-            sys.stdout.flush()
-            help_ing = True
-            
-            solution = Solver(level_set, current_level)
-            solution.parse_matrix_to_str(game.myLevel.matrix)
-            solution.start()
-            solution.join()
-            
-            # print('len', len(solution.list_actions))
-            list_actions = copy.copy(solution.list_actions)
-            if len(solution.list_actions)>0:
-                current_suggestion = list_actions.pop(0)
-                print('Please move {}'.format("Left"))
+            if help_ing:
+                print('\tAlready help you')
                 sys.stdout.flush()
+                
+            else:
+                print('\tCall for solution')
+                sys.stdout.flush()
+                help_ing = True
+                
+                solution = Solver(level_set, current_level)
+                solution.parse_matrix_to_str(game.myLevel.matrix)
+                solution.start()
+                solution.join()
+            
+                # print('len', len(solution.list_actions))
+                list_actions = copy.copy(solution.list_actions)
+                if len(list_actions)>0:
+                    current_suggestion = list_actions.pop(0)
+            print('Please move {}'.format(current_suggestion))
+            sys.stdout.flush()
+            return False, current_suggestion, list_actions
         elif inst == RobotMotion.EXIT:
             break
             
-        if (len(game.myLevel.getBoxes()) == 0):
-            comm.send((Instruction.EXIT,), dest=MPI_Rank.USER)
-            print("Level Completed")
-            sys.stdout.flush()
+        if not help_ing:
+            if (len(game.myLevel.getBoxes()) == 0):
+                comm.send((Instruction.EXIT,), dest=MPI_Rank.USER)
+                print("Level Completed")
+                sys.stdout.flush()
+                
+                break
             
-            break
-        else:
-            comm.send((Instruction.PLAY,), dest=MPI_Rank.USER)
+            else:
+                comm.send((Instruction.PLAY,), dest=MPI_Rank.USER)
             
-    return True
+    return True, True, list_actions
 
 def pseudo_main(comm, rank):
     while True:
@@ -308,7 +411,7 @@ def pseudo_main(comm, rank):
             print('\tenv call user', 'True')
             sys.stdout.flush()
         
-            ret = pseudo_play(comm, rank, game, times=1, 
+            ret, gesture, list_actions = pseudo_play(comm, rank, game, times=1, 
                 help_ing=True, list_actions=[], current_suggestion = gesture)
             
             print('\tenv got', ret)
@@ -319,9 +422,10 @@ def pseudo_main(comm, rank):
             print('--- Lets play ---')
             sys.stdout.flush()
 
-            pseudo_play(comm, rank, game, times=1000)
+            ret, gesture, list_actions = pseudo_play(comm, rank, game, times=100)
             
-            comm.send(ret, dest=MPI_Rank.MASTER)
+            comm.send((ret, gesture, list_actions), dest=MPI_Rank.MASTER)
+            
         elif (inst == Instruction.EXIT):
             comm.send((Instruction.EXIT,), dest=MPI_Rank.CAMERA)
             print('--- camera bye~ ---')

@@ -16,7 +16,7 @@ class Listener(myo.DeviceListener):
         # print("Original pose : ", event.pose)
         
     def on_connected(self, event):
-        print("Hello, '{}'! Finger Spread to exit.".format(event.device_name))
+        print("Hello, '{}'! double_tap to exit.".format(event.device_name))
         # print(event.Arm)
         # event.device.vibrate(myo.VibrationType.short)
         event.device.vibrate(myo.VibrationType.long)
@@ -50,41 +50,77 @@ class Listener(myo.DeviceListener):
         else:
             print("no change")
             pass
+        sys.stdout.flush()
         if event.pose == myo.Pose.double_tap:
             return False
-    def print_pose(self):
-        return self.lastpose
-
-def init(ctrl_type):
-    hub = None
-    listener = None
     
-    if ctrl_type == "keyboard":
-        pass
-    elif ctrl_type == "myo":
-        myo.init(sdk_path=os.path.join(base_dir, 'myo-sdk-win-0.9.0'))
-        hub = myo.Hub()
-        # arm = myo.Arm
-        # print("Myo is connected with : ", arm.name)
-        listener = Listener()
-        print("listening ....")
+    def get_pose(self):
         
-    return hub, listener
+        if self.lastpose == myo.Pose.double_tap:
+            # return "double_tap"
+            return ""
+        elif self.lastpose == myo.Pose.fist:
+            return "fist"
+        elif self.lastpose == myo.Pose.fingers_spread:
+            return "fingers_spread"
+        elif self.lastpose == myo.Pose.wave_in:
+            return "wave_in"
+        elif self.lastpose == myo.Pose.wave_out:
+            return "wave_out"
+        elif self.lastpose == myo.Pose.rest:
+            return "rest"
+        else:
+            return ""
 
+def parse_pose_to_robot_cmd(comm, pose):
+    if pose == "wave_in":
+        comm.send((RobotMotion.LEFT,), dest=MPI_Rank.ROBOT)
+    elif pose == "wave_out":
+        comm.send((RobotMotion.RIGHT,), dest=MPI_Rank.ROBOT)
+    elif pose == "fingers_spread":
+        comm.send((RobotMotion.BACKWARD,), dest=MPI_Rank.ROBOT)
+    elif pose == "fist":
+        comm.send((RobotMotion.FORWARD,), dest=MPI_Rank.ROBOT)
+        
 def main(comm, rank):
-    hub = None
-    listener = None
+    myo.init(sdk_path=os.path.join(base_dir, 'myo-sdk-win-0.9.0'))
+    hub = myo.Hub()
+    
+    listener = Listener()
+    print("listening ....")
     
     while True:
+            
         data = comm.recv(source=MPI_Rank.MASTER)
         inst = data[0]
         sys.stdout.flush()
         if inst == Instruction.INIT:
-            
-            # hub, listener = init(ctrl_type)
-            print('hub', hub, 'listener', listener)
-        elif inst == Instruction.ROBOT_GUIDE:
             pass
+        elif inst == Instruction.ROBOT_GUIDE:
+            # wait for robot
+            gaming = comm.recv(source=MPI_Rank.ROBOT)
+            print('\tuser hear robot', gaming)
+            sys.stdout.flush()
+            
+            list_pose = []
+            last_p = ""
+            while hub.run(listener.on_event, 100):
+                ppose = listener.get_pose()
+                if (ppose != last_p):
+                    print("\t!!!!!")
+                    sys.stdout.flush()
+                    last_p = ppose
+                    print("\tppose", ppose)
+                    sys.stdout.flush()
+                    if ppose != "rest":
+                        list_pose.append(ppose)
+                        
+                if len(list_pose)>10:
+                    pose = max(set(list_pose), key=list_pose.count)
+                    parse_pose_to_robot_cmd(comm, pose)
+                    break
+            print('end training')
+            sys.stdout.flush()
                 
         elif inst == Instruction.EXIT:
             break
@@ -111,6 +147,7 @@ def pseudo_wait(time):
             waiting = False
         if time <= 0:
             waiting = False
+            event = None
 
     return  event
 
@@ -124,7 +161,12 @@ def pseudo_play(comm, times=None):
         else:
             event = pygame.event.poll()
         
-        if event.type == pygame.KEYDOWN:
+        if event is None:
+            comm.send((RobotMotion.HELP,), dest=MPI_Rank.ROBOT)
+            print("user leave active mode")
+            sys.stdout.flush()
+            break
+        elif event.type == pygame.KEYDOWN:
             # print('\tUser', event)
             # sys.stdout.flush()
             if event.key == pygame.K_LEFT:
@@ -147,8 +189,7 @@ def pseudo_play(comm, times=None):
             pygame.quit()
             counter = times + 1
             break
-        elif event is None:
-            comm.send((RobotMotion.HELP,), dest=MPI_Rank.ROBOT)
+        
         else:
             continue
         
@@ -158,9 +199,13 @@ def pseudo_play(comm, times=None):
         if times > 1:
             data = comm.recv(source=MPI_Rank.ROBOT)
             inst = data[0]
+            print("Check exit", inst)
+            sys.stdout.flush()
             if (inst == Instruction.EXIT):
-                comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+                # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
                 pygame.quit()
+                print("User Bye~", inst)
+                sys.stdout.flush()
                 break
         
             
@@ -194,9 +239,10 @@ def pseudo_main(comm, rank):
             print('end training')
             sys.stdout.flush()
         elif inst == Instruction.PLAY:
-            print('\t--- Pygame Listen ---')
+            print('\t--- Pygame Play ---')
             sys.stdout.flush()
-            pseudo_play(comm)
+            
+            pseudo_play(comm, times=100)
         elif inst == Instruction.EXIT:
             print('\t--- Pygame Bye~ ---')
             sys.stdout.flush()

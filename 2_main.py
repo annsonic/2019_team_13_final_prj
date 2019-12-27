@@ -67,16 +67,39 @@ def training_user(comm):
                 break
     
 def game(comm):
+    
     reqs = []
     reqs.append(comm.isend((Instruction.PLAY,), dest=MPI_Rank.USER))
     reqs.append(comm.isend((Instruction.PLAY,), dest=MPI_Rank.ROBOT))
     # Polling MPI.isend is done
     for req in reqs:
         req.wait()
-    ret = comm.recv(source=MPI_Rank.ROBOT)
+    
+    (ret, gesture, list_actions) = comm.recv(source=MPI_Rank.ROBOT)
+    # print(ret, gesture, list_actions)
+    # sys.stdout.flush()
+    while True:
+        if len(list_actions)==0:
+            break
+        elif ret is True:
+            gesture = list_actions.pop(0)
+        
+        # print('verify', gesture)
+        # sys.stdout.flush()
+        comm.send((Instruction.ROBOT_GUIDE,(gesture, 
+                [{"sentence": "Please move {}".format(gesture), "mood": "positive"}])),
+                dest=MPI_Rank.ROBOT)
+        comm.send((Instruction.ROBOT_GUIDE,), dest=MPI_Rank.USER)
+        # print(list_actions)
+        # sys.stdout.flush()
+        ret = comm.recv(source=MPI_Rank.ROBOT)
     
 def congratuation(comm):
-    pass
+    list_dict = [{"sentence": "恭喜你成功破關", "mood": "positive"},
+                 {"sentence": "你真是個天才", "mood": "positive"},
+                 {"sentence": "我表現得也很不錯對吧", "mood": "positive"},
+                 {"sentence": "請摸摸我的頭 讚美我一下嘿", "mood": "positive"}]
+    comm.send((Instruction.SPEAK,list_dict), dest=MPI_Rank.ROBOT)
     
 def exit(comm):
     reqs = []
@@ -110,10 +133,10 @@ def main(cam_id=0,
         if has_robot:
             welcome(comm)
             accessory_in_position(comm, flag_exclude_robot=True)
-        # training_user(comm)
+        training_user(comm)
             # # accessory_in_position(comm, flag_exclude_robot=False)
-        # game(comm)
-        # congratuation(comm)
+        game(comm)
+        congratuation(comm)
         exit(comm)
         
     elif rank == MPI_Rank.ROBOT: # Robot
@@ -163,7 +186,7 @@ if __name__ == '__main__':
     main(cam_id=0, 
          has_robot=False, 
          host='192.168.50.216',
-         ctrl_type="myo")
+         ctrl_type="keyboard")
     
     # if len(sys.argv) > 1:
         # fn = sys.argv[1]

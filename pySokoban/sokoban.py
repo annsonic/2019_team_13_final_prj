@@ -80,13 +80,14 @@ class mySokoban():
         
         #print boxes
         print('\t', self.myLevel.getBoxes())
-        
+        str_status = ""
         if direction == "L":
             print("\t######### Moving Left #########")
             
             # if is_space
             if matrix[y][x-1] == " ":
-                print("\t\tOK Space Found")
+                print("\tOK Space Found")
+                str_status = "\tOK Space Found"
                 matrix[y][x-1] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -96,7 +97,8 @@ class mySokoban():
             
             # if is_box
             elif matrix[y][x-1] == "$":
-                print("\t\tBox Found")
+                print("\tBox Found")
+                str_status = "\tBox Found"
                 if matrix[y][x-2] == " ":
                     matrix[y][x-2] = "$"
                     matrix[y][x-1] = "@"
@@ -117,7 +119,8 @@ class mySokoban():
                     
             # if is_box_on_target
             elif matrix[y][x-1] == "*":
-                print("\t\tBox on target Found")
+                print("\tBox on target Found")
+                str_status = "\tBox on target Found"
                 if matrix[y][x-2] == " ":
                     matrix[y][x-2] = "$"
                     matrix[y][x-1] = "@"
@@ -138,7 +141,8 @@ class mySokoban():
                     
             # if is_target
             elif matrix[y][x-1] == ".":
-                print("\t\tTarget Found")
+                print("\tTarget Found")
+                str_status = "\tTarget Found"
                 matrix[y][x-1] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -148,14 +152,16 @@ class mySokoban():
             
             # else
             else:
-                print("\t\tThere is a wall here")
+                print("\tThere is a wall here")
+                str_status = "\tThere is a wall here"
         
         elif direction == "R":
             print("\t######### Moving Right #########")
 
             # if is_space
             if matrix[y][x+1] == " ":
-                print("\t\tOK Space Found")
+                print("\tOK Space Found")
+                str_status = "\tOK Space Found"
                 matrix[y][x+1] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -165,7 +171,8 @@ class mySokoban():
             
             # if is_box
             elif matrix[y][x+1] == "$":
-                print("\t\tBox Found")
+                print("\tBox Found")
+                str_status = "\tBox Found"
                 if matrix[y][x+2] == " ":
                     matrix[y][x+2] = "$"
                     matrix[y][x+1] = "@"
@@ -186,7 +193,8 @@ class mySokoban():
             
             # if is_box_on_target
             elif matrix[y][x+1] == "*":
-                print("\t\tBox on target Found")
+                print("\tBox on target Found")
+                str_status = "\tBox on target Found"
                 if matrix[y][x+2] == " ":
                     matrix[y][x+2] = "$"
                     matrix[y][x+1] = "@"
@@ -207,7 +215,8 @@ class mySokoban():
                 
             # if is_target
             elif matrix[y][x+1] == ".":
-                print("\t\tTarget Found")
+                print("\tTarget Found")
+                str_status = "\tTarget Found"
                 matrix[y][x+1] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -217,14 +226,16 @@ class mySokoban():
                 
             # else
             else:
-                print("\t\tThere is a wall here")
+                print("\tThere is a wall here")
+                str_status = "\tThere is a wall here"
 
         elif direction == "D":
             print("\t######### Moving Down #########")
 
             # if is_space
             if matrix[y+1][x] == " ":
-                print("\t\tOK Space Found")
+                print("\tOK Space Found")
+                str_status = "\tOK Space Found"
                 matrix[y+1][x] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -234,7 +245,8 @@ class mySokoban():
             
             # if is_box
             elif matrix[y+1][x] == "$":
-                print("\t\tBox Found")
+                print("\tBox Found")
+                str_status = "\tBox Found"
                 if matrix[y+2][x] == " ":
                     matrix[y+2][x] = "$"
                     matrix[y+1][x] = "@"
@@ -255,7 +267,8 @@ class mySokoban():
             
             # if is_box_on_target
             elif matrix[y+1][x] == "*":
-                print("\t\tBox on target Found")
+                print("\tBox on target Found")
+                str_status = "\tBox on target Found"
                 if matrix[y+2][x] == " ":
                     matrix[y+2][x] = "$"
                     matrix[y+1][x] = "@"
@@ -276,7 +289,8 @@ class mySokoban():
             
             # if is_target
             elif matrix[y+1][x] == ".":
-                print("\t\tTarget Found")
+                print("\tTarget Found")
+                str_status = "\tTarget Found"
                 matrix[y+1][x] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -286,14 +300,16 @@ class mySokoban():
                 
             # else
             else:
-                print("\t\tThere is a wall here")
+                print("\tThere is a wall here")
+                str_status = "\tThere is a wall here"
 
         elif direction == "U":
             print("\t######### Moving Up #########")
 
             # if is_space
             if matrix[y-1][x] == " ":
-                print("\t\tOK Space Found")
+                print("\tOK Space Found")
+                str_status = "\tOK Space Found"
                 matrix[y-1][x] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -303,7 +319,8 @@ class mySokoban():
             
             # if is_box
             elif matrix[y-1][x] == "$":
-                print("\t\tBox Found")
+                print("\tBox Found")
+                str_status = "\tBox Found"
                 if matrix[y-2][x] == " ":
                     matrix[y-2][x] = "$"
                     matrix[y-1][x] = "@"
@@ -324,7 +341,8 @@ class mySokoban():
                         
             # if is_box_on_target
             elif matrix[y-1][x] == "*":
-                print("\t\tBox on target Found")
+                print("\tBox on target Found")
+                str_status = "\tBox on target Found"
                 if matrix[y-2][x] == " ":
                     matrix[y-2][x] = "$"
                     matrix[y-1][x] = "@"
@@ -345,7 +363,8 @@ class mySokoban():
                         
             # if is_target
             elif matrix[y-1][x] == ".":
-                print("\t\tTarget Found")
+                print("\tTarget Found")
+                str_status = "\tTarget Found"
                 matrix[y-1][x] = "@"
                 if self.target_found == True:
                     matrix[y][x] = "."
@@ -355,11 +374,13 @@ class mySokoban():
                 
             # else
             else:
-                print("\t\tThere is a wall here")
+                print("\tThere is a wall here")
+                str_status = "\tThere is a wall here"
         
         self.drawLevel(matrix)
         
         sys.stdout.flush()
+        return str_status
         
     def check_boxes(self, next_stage=True):
         print("\tBoxes remaining: " + str(len(self.myLevel.getBoxes())))

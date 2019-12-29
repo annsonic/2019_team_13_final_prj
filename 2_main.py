@@ -97,7 +97,7 @@ def send_pose_to_robot(comm, pose):
     elif pose == "help":
         comm.send((RobotMotion.HELP,), dest=MPI_Rank.ROBOT)
 
-def perception_loop(comm):
+def myo_loop(comm):
     print("[INFO] sampling THREADED frames from webcam...")
     vs = WebcamVideoStream(src=cam_id).start()
     
@@ -190,19 +190,18 @@ def keyboard_loop(comm):
                 cv2.imwrite(img_name, frame)
                 
                 if event.key == pygame.K_LEFT:
-                    ppose = "wave_in"
+                    send_pose_to_robot(comm, "wave_in")
                 elif event.key == pygame.K_RIGHT:
-                    ppose = "wave_out"
+                    send_pose_to_robot(comm, "wave_out")
                 elif event.key == pygame.K_DOWN:
-                    ppose = "fingers_spread"
+                    send_pose_to_robot(comm, "fingers_spread")
                 elif event.key == pygame.K_UP:
-                    ppose = "fist"
-                elif event.key == pygame.h:
+                    send_pose_to_robot(comm, "fist")
+                elif event.key == pygame.K_h:
                     send_pose_to_robot(comm, "help")
-                elif event.key == pygame.K_ESCAPE:
+                elif (event.key == pygame.K_ESCAPE) or (event.key == pygame.K_q):
                     comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
                     break
-                send_pose_to_robot(comm, ppose)
             
             elif event.type == pygame.QUIT:
                 comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
@@ -214,7 +213,6 @@ def keyboard_loop(comm):
                     current_wait_time = 0
             
     finally:
-        hub.stop()  # !! crucial
         vs.stop()
 
 def welcome(comm):
@@ -240,7 +238,7 @@ def main():
         if ctrl_type=="keyboard":
             keyboard_loop(comm)
         else: # Polling signals from Myo
-            perception_loop(comm)
+            myo_loop(comm)
         
         comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
     elif rank == MPI_Rank.ROBOT: # Robot
@@ -254,6 +252,7 @@ def main():
         print("== Useless process {} ==".format(rank))
         sys.stdout.flush()
         
+    pygame.display.quit()
     pygame.quit()
     print("== process {} is done ==".format(rank))
     sys.stdout.flush()

@@ -1,7 +1,7 @@
 from __future__ import print_function
 from __future__ import division
 
-
+import sys
 import operator
 import functools
 '''
@@ -104,13 +104,17 @@ class Warehouse:
             self.worker = workers[0]
         self.boxes = list(find_2D_iterator(lines, "$")) # crate/box
         self.targets = list(find_2D_iterator(lines, ".")) # empty target
+        
         targets_with_boxes = list(find_2D_iterator(lines, "*")) # box on target
         self.boxes += targets_with_boxes
         self.targets += targets_with_boxes
+        
         if len(workers_on_a_target) == 1:
             self.worker = workers_on_a_target[0]
             self.targets.append(self.worker) 
         self.walls = list(find_2D_iterator(lines, "#")) # set(find_2D_iterator(lines, "#"))
+        
+        sys.stdout.flush()
         assert len(self.boxes) == len(self.targets)
 
 #    def visualize(self):

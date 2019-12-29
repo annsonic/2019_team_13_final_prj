@@ -79,7 +79,10 @@ class mySokoban():
         y = self.myLevel.getPlayerPosition()[1]
         
         #print boxes
-        print('\t', self.myLevel.getBoxes())
+        print('\tBoxes', self.myLevel.getBoxes())
+        print('\tPlayer', self.myLevel.getPlayerPosition())
+        # print('check target_found', self.target_found)
+        sys.stdout.flush()
         str_status = ""
         if direction == "L":
             print("\t######### Moving Left #########")
@@ -89,9 +92,10 @@ class mySokoban():
                 print("\tOK Space Found")
                 str_status = "\tOK Space Found"
                 matrix[y][x-1] = "@"
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
-                    self.target_found = False
+                    # self.target_found = False
                 else:
                     matrix[y][x] = " "
             
@@ -102,20 +106,21 @@ class mySokoban():
                 if matrix[y][x-2] == " ":
                     matrix[y][x-2] = "$"
                     matrix[y][x-1] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
                 elif matrix[y][x-2] == ".":
                     matrix[y][x-2] = "*"
                     matrix[y][x-1] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
-                    
                     
             # if is_box_on_target
             elif matrix[y][x-1] == "*":
@@ -123,32 +128,35 @@ class mySokoban():
                 str_status = "\tBox on target Found"
                 if matrix[y][x-2] == " ":
                     matrix[y][x-2] = "$"
-                    matrix[y][x-1] = "@"
-                    if self.target_found == True:
+                    matrix[y][x-1] = "+" # Xinyi mod
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
                     
                 elif matrix[y][x-2] == ".":
                     matrix[y][x-2] = "*"
-                    matrix[y][x-1] = "@"
-                    if self.target_found == True:
+                    matrix[y][x-1] = "+" # Xinyi
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
                     
             # if is_target
             elif matrix[y][x-1] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
                 matrix[y][x-1] = "+" # Xinyi
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
                 else:
                     matrix[y][x] = " "
-                self.target_found = True
+                # self.target_found = True
             
             # else
             else:
@@ -163,9 +171,10 @@ class mySokoban():
                 print("\tOK Space Found")
                 str_status = "\tOK Space Found"
                 matrix[y][x+1] = "@"
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
-                    self.target_found = False
+                    # self.target_found = False
                 else:
                     matrix[y][x] = " "
             
@@ -176,18 +185,20 @@ class mySokoban():
                 if matrix[y][x+2] == " ":
                     matrix[y][x+2] = "$"
                     matrix[y][x+1] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
                 
                 elif matrix[y][x+2] == ".":
                     matrix[y][x+2] = "*"
                     matrix[y][x+1] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "				
             
@@ -197,32 +208,35 @@ class mySokoban():
                 str_status = "\tBox on target Found"
                 if matrix[y][x+2] == " ":
                     matrix[y][x+2] = "$"
-                    matrix[y][x+1] = "@"
-                    if self.target_found == True:
+                    matrix[y][x+1] = "+" # Xinyi
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
                     
                 elif matrix[y][x+2] == ".":
                     matrix[y][x+2] = "*"
                     matrix[y][x+1] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
                 
             # if is_target
             elif matrix[y][x+1] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
                 matrix[y][x+1] = "+" # Xinyi
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
                 else:
                     matrix[y][x] = " "
-                self.target_found = True
+                # self.target_found = True
                 
             # else
             else:
@@ -237,9 +251,10 @@ class mySokoban():
                 print("\tOK Space Found")
                 str_status = "\tOK Space Found"
                 matrix[y+1][x] = "@"
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
-                    self.target_found = False
+                    # self.target_found = False
                 else:
                     matrix[y][x] = " "
             
@@ -250,18 +265,20 @@ class mySokoban():
                 if matrix[y+2][x] == " ":
                     matrix[y+2][x] = "$"
                     matrix[y+1][x] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
                 
                 elif matrix[y+2][x] == ".":
                     matrix[y+2][x] = "*"
                     matrix[y+1][x] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
             
@@ -271,32 +288,35 @@ class mySokoban():
                 str_status = "\tBox on target Found"
                 if matrix[y+2][x] == " ":
                     matrix[y+2][x] = "$"
-                    matrix[y+1][x] = "@"
-                    if self.target_found == True:
+                    matrix[y+1][x] = "+" # Xinyi
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
                     
                 elif matrix[y+2][x] == ".":
                     matrix[y+2][x] = "*"
-                    matrix[y+1][x] = "@"
-                    if self.target_found == True:
+                    matrix[y+1][x] = "+"
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
             
             # if is_target
             elif matrix[y+1][x] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
                 matrix[y+1][x] = "+" # Xinyi
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
                 else:
                     matrix[y][x] = " "
-                self.target_found = True
+                # self.target_found = True
                 
             # else
             else:
@@ -311,9 +331,10 @@ class mySokoban():
                 print("\tOK Space Found")
                 str_status = "\tOK Space Found"
                 matrix[y-1][x] = "@"
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
-                    self.target_found = False
+                    # self.target_found = False
                 else:
                     matrix[y][x] = " "
             
@@ -324,18 +345,20 @@ class mySokoban():
                 if matrix[y-2][x] == " ":
                     matrix[y-2][x] = "$"
                     matrix[y-1][x] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
 
                 elif matrix[y-2][x] == ".":
                     matrix[y-2][x] = "*"
                     matrix[y-1][x] = "@"
-                    if self.target_found == True:
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        self.target_found = False
+                        # self.target_found = False
                     else:
                         matrix[y][x] = " "					
                         
@@ -345,32 +368,35 @@ class mySokoban():
                 str_status = "\tBox on target Found"
                 if matrix[y-2][x] == " ":
                     matrix[y-2][x] = "$"
-                    matrix[y-1][x] = "@"
-                    if self.target_found == True:
+                    matrix[y-1][x] = "+" # Xinyi
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
                     
                 elif matrix[y-2][x] == ".":
                     matrix[y-2][x] = "*"
-                    matrix[y-1][x] = "@"
-                    if self.target_found == True:
+                    matrix[y-1][x] = "+"
+                    if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
-                    self.target_found = True
+                    # self.target_found = True
                         
             # if is_target
             elif matrix[y-1][x] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
                 matrix[y-1][x] = "+" # Xinyi
-                if self.target_found == True:
+                if matrix[y][x] == "+": # Xinyi
+                    # if self.target_found == True:
                     matrix[y][x] = "."
                 else:
                     matrix[y][x] = " "
-                self.target_found = True
+                # self.target_found = True
                 
             # else
             else:
@@ -383,15 +409,22 @@ class mySokoban():
         return str_status
         
     def check_boxes(self, next_stage=True):
-        print("\tBoxes remaining: " + str(len(self.myLevel.getBoxes())))
+        # print("\tmatrix: ", self.myLevel.matrix)
+        # sys.stdout.flush()
+        
+        # print("\tBoxes remaining: " + str(len(self.myLevel.getBoxes())))
+        # sys.stdout.flush()
         
         if (len(self.myLevel.getBoxes()) == 0) and next_stage:
             # self.myEnvironment.screen.fill((0, 0, 0))
             print("Level Completed")
+            sys.stdout.flush()
+            
             self.current_level += 1
             self.initLevel()
-            
-        sys.stdout.flush()
+            return True
+        else:
+            return False
 		
     def initLevel(self):
         # Create an instance of this Level
@@ -401,7 +434,7 @@ class mySokoban():
         self.myEnvironment.screen.fill((0, 0, 0))
         self.drawLevel(self.myLevel.getMatrix())
         
-        self.target_found = False
+        # self.target_found = False
 	
 
 def main():

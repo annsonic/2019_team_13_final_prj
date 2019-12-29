@@ -4,6 +4,7 @@ import datetime
 from threading import Thread
 import cv2
 import imutils
+import time
 
 
 class FPS:
@@ -42,9 +43,18 @@ class WebcamVideoStream:
     def __init__(self, src=0):
         # initialize the video camera stream and read the first frame
         # from the stream
-        self.stream = cv2.VideoCapture(src, cv2.CAP_DSHOW) 
+        self.stream = cv2.VideoCapture(src, cv2.CAP_DSHOW)
         # solution to [ WARN:1] terminating async callback
-        (self.grabbed, self.frame) = self.stream.read()
+        # But still has OpenCV Error capturing images in thread: 
+        # [ERROR:0] VIDEOIO(makePtr<VideoCapture_DShow>(index)): raised unknown C++ exception!
+        
+        while not self.stream.isOpened():
+            time.sleep(1)
+        
+        self.frame = None
+        while self.frame is None:
+            (self.grabbed, self.frame) = self.stream.read()
+            time.sleep(1)
         
         # initialize the variable used to indicate if the thread should
         # be stopped

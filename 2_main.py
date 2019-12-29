@@ -235,6 +235,7 @@ def main():
         
         welcome(comm)
         
+        # Note: we need press Esc to leave keyboard_loop(comm) or myo_loop(comm)
         if ctrl_type=="keyboard":
             keyboard_loop(comm)
         else: # Polling signals from Myo

@@ -2,6 +2,8 @@ import os
 import sys
 import pygame
 import numpy as np
+import copy
+import time
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(base_dir, 'pySokoban'))
 sys.path.append(os.path.join(base_dir, 'SokobanSolver'))
@@ -43,10 +45,13 @@ class Solver(Thread):
 
     def run(self):
         self.solution = search.breadth_first_graph_search(self.puzzle)
-
-        self.list_actions = [node.action for node in self.solution.path()]
-        self.list_actions.pop(0)
-        # print(list_event)
+        
+        if self.solution:
+            self.list_actions = [node.action for node in self.solution.path()]
+            self.list_actions.pop(0)
+            # print(list_event)
+        else:
+            self.list_actions = []
         
     def stop(self):
         self.stopped = True
@@ -70,27 +75,60 @@ class Components():
             else:
                 raise ValueError("Xinyi: missing param host")
                 sys.exit(1)
-        clock = pygame.time.Clock()
-        self.dt = clock.tick(30) / 1000  
+        # clock = pygame.time.Clock()
+        # self.dt = clock.tick(30) / 1000  
         # Makes the program halt for 'time' seconds
         
         self.game = mySokoban(level=current_level)
         self.game.initLevel()
         
         self.wait_time = wait_time
-        
+        self.list_suggestion = []
+        self.renew_suggestion = True
 
-    def get_solution(self):
+    def get_solution(self, matrix):
         self.solution = Solver(level_set, current_level)
-        # print('self.game.myLevel.matrix \n', self.game.myLevel.matrix)
+        # print('\treceive matrix \n\t', matrix)
         # sys.stdout.flush()
-        self.solution.parse_matrix_to_str(self.game.myLevel.matrix)
+        self.solution.parse_matrix_to_str(matrix)
         self.solution.start()
         self.solution.join()
         self.solution.stop()
             
-        print('\tlen of solution', len(self.solution.list_actions))
-        sys.stdout.flush()
+        self.list_suggestion = copy.deepcopy(self.solution.list_actions)
+    
+    def give_suggestion(self):
+        count = 0
+        while (len(self.list_suggestion)== 0):
+            if count == 0:
+                matrix = copy.deepcopy(self.game.myLevel.matrix)
+            else:
+                matrix = copy.deepcopy(self.game.myLevel.matrix_history[count])
+            count -= 1
+            
+            self.get_solution(matrix)
+        # print('count', count)
+        # print('\tlen of solution', len(self.list_suggestion))
+        # sys.stdout.flush()
+        
+        flag_undo = False
+        while count <-1:
+            print('\t===undo move===')
+            sys.stdout.flush()
+            self.game.myLevel.getLastMatrix()
+            
+            count += 1
+            flag_undo = True
+            self.game.drawLevel(self.game.myLevel.matrix)
+            
+        if flag_undo:
+            # TODO: getBoxes
+            mind_list_boxes_pos = self.game.myLevel.getBoxes()
+            mind_player_pos = self.game.myLevel.getPlayerPosition()
+            print('\tmind_list_boxes_pos, mind_player_pos', mind_list_boxes_pos, mind_player_pos)
+            sys.stdout.flush()
+            # TODO: check mismatches and robot says let me undo
+            # TODO: robot pushes the boxes back
     
     def play(self):
         # 
@@ -115,25 +153,57 @@ class Components():
             print("\tinst", inst)
             sys.stdout.flush()
             
-            
             event = pygame.event.poll() 
             # work-around for pygame.display.update() got stuck
+            
             if inst == RobotMotion.LEFT:
                 str_status = self.game.movePlayer("L")
                 if has_robot and (str_status != "\tThere is a wall here"):
                     self.robot.left()
+                
+                flag_win = self.game.check_boxes()
+                if flag_win:
+                    pygame.quit()
+                    break
+                    
+                self.renew_suggestion = True
+                
             elif inst == RobotMotion.RIGHT:
                 str_status = self.game.movePlayer("R")
                 if has_robot and (str_status != "\tThere is a wall here"):
                     self.robot.right()
+                    
+                flag_win = self.game.check_boxes()
+                if flag_win:
+                    pygame.quit()
+                    break
+                    
+                self.renew_suggestion = True
+                
             elif inst == RobotMotion.BACKWARD:
                 str_status = self.game.movePlayer("D")
                 if has_robot and (str_status != "\tThere is a wall here"):
                     self.robot.backward()
+                
+                flag_win = self.game.check_boxes()
+                if flag_win:
+                    pygame.quit()
+                    break
+                    
+                self.renew_suggestion = True
+                
             elif inst == RobotMotion.FORWARD:
                 str_status = self.game.movePlayer("U")
                 if has_robot and (str_status != "\tThere is a wall here"):
                     self.robot.forward()
+                    
+                flag_win = self.game.check_boxes()
+                if flag_win:
+                    pygame.quit()
+                    break
+                    
+                self.renew_suggestion = True
+                
             elif inst == RobotMotion.EXIT:
                 pygame.quit()
                 break
@@ -141,7 +211,11 @@ class Components():
                 if has_robot:
                     # TODO: ask & listen
                     self.robot.say(line='沒問題 我一定會幫你的', mood="positive")
-                self.get_solution()
+                
+                if (self.renew_suggestion):# or (len(self.list_suggestion)==0):
+                    self.list_suggestion = []
+                    self.give_suggestion()
+                    self.renew_suggestion = False
 
 def welcome(comm):
     # comm.send((Instruction.NOD,"positive"), dest=MPI_Rank.ROBOT)

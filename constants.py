@@ -11,7 +11,7 @@ cam_id = 0
 has_robot = False
 host="192.168.11.62"
 ctrl_type="keyboard"#"myo"
-wait_time = 10 # unit: seconds
+wait_time = 60 # unit: seconds
 
 # dict_hsv = {
             # "light_green": (46, 30, 0),

@@ -38,8 +38,8 @@ class Level:
         for i in range(0, len(self.matrix)):
             # Iterate all columns
             for k in range(0, len(self.matrix[i]) - 1):
-                if self.matrix[i][k] == "@":
-                    return [k, i]
+                if (self.matrix[i][k] == "@") or (self.matrix[i][k] == "+"):
+                    return [k, i] 
 
     def getBoxes(self):
         # Iterate all Rows

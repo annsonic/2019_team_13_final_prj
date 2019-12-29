@@ -82,8 +82,8 @@ class Components():
 
     def get_solution(self):
         self.solution = Solver(level_set, current_level)
-        print('init len of solution', len(self.solution.list_actions))
-        sys.stdout.flush()
+        # print('self.game.myLevel.matrix \n', self.game.myLevel.matrix)
+        # sys.stdout.flush()
         self.solution.parse_matrix_to_str(self.game.myLevel.matrix)
         self.solution.start()
         self.solution.join()

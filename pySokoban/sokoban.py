@@ -56,7 +56,7 @@ class mySokoban():
             player = pygame.transform.scale(player, (new_image_size,new_image_size))	
             
         # Just a Dictionary (associative array in pyhton's lingua) to map images to characters used in level design 
-        images = {'#': wall, ' ': space, '$': box, '.': target, '@': player, '*': box_on_target}
+        images = {'#': wall, ' ': space, '$': box, '.': target, '@': player, '*': box_on_target, '+': player}
         
         # Get image size. Images are always squares so it doesn't care if you get width or height
         box_size = wall.get_width()
@@ -143,7 +143,7 @@ class mySokoban():
             elif matrix[y][x-1] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
-                matrix[y][x-1] = "@"
+                matrix[y][x-1] = "+" # Xinyi
                 if self.target_found == True:
                     matrix[y][x] = "."
                 else:
@@ -217,7 +217,7 @@ class mySokoban():
             elif matrix[y][x+1] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
-                matrix[y][x+1] = "@"
+                matrix[y][x+1] = "+" # Xinyi
                 if self.target_found == True:
                     matrix[y][x] = "."
                 else:
@@ -291,7 +291,7 @@ class mySokoban():
             elif matrix[y+1][x] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
-                matrix[y+1][x] = "@"
+                matrix[y+1][x] = "+" # Xinyi
                 if self.target_found == True:
                     matrix[y][x] = "."
                 else:
@@ -365,7 +365,7 @@ class mySokoban():
             elif matrix[y-1][x] == ".":
                 print("\tTarget Found")
                 str_status = "\tTarget Found"
-                matrix[y-1][x] = "@"
+                matrix[y-1][x] = "+" # Xinyi
                 if self.target_found == True:
                     matrix[y][x] = "."
                 else:

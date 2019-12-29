@@ -97,7 +97,7 @@ class Warehouse:
           self.worker, self.boxes, self.targets and self.walls
         '''
         workers =  list(find_2D_iterator(lines, "@"))  # workers on a free cell
-        workers_on_a_target = list(find_2D_iterator(lines, "!"))
+        workers_on_a_target = list(find_2D_iterator(lines, "+"))
         # Check that we have exactly one agent
         assert len(workers)+len(workers_on_a_target) == 1 
         if len(workers) == 1:

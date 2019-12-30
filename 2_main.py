@@ -56,15 +56,16 @@ class Listener(myo.DeviceListener):
         
         if event.pose != self.lastpose:
             self.lastpose = event.pose
-            # print("Pose: ", self.lastpose)
+            print("Pose: ", self.lastpose)
+            sys.stdout.flush()
             # print(" ")
             
         else:
             # print("no change")
             return self.lastpose
             pass
-        if event.pose == myo.Pose.double_tap:
-            return False
+        # if event.pose == myo.Pose.fingers_spread:
+            # return False
     
     def get_pose(self):
         
@@ -88,12 +89,12 @@ def send_pose_to_robot(comm, pose):
         comm.send((RobotMotion.LEFT,), dest=MPI_Rank.ROBOT)
     elif pose == "wave_out":
         comm.send((RobotMotion.RIGHT,), dest=MPI_Rank.ROBOT)
-    elif pose == "fingers_spread":
-        comm.send((RobotMotion.BACKWARD,), dest=MPI_Rank.ROBOT)
+    # elif pose == "double_tap":#"fingers_spread":
+        # comm.send((RobotMotion.BACKWARD,), dest=MPI_Rank.ROBOT)
     elif pose == "fist":
         comm.send((RobotMotion.FORWARD,), dest=MPI_Rank.ROBOT)
-    elif pose == "double_tap":
-        comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+    # elif pose == "fingers_spread":
+        # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
     elif pose == "help":
         comm.send((RobotMotion.HELP,), dest=MPI_Rank.ROBOT)
 
@@ -145,6 +146,7 @@ def myo_loop(comm):
                 
             
     finally:
+        comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
         hub.stop()  # !! crucial
         vs.stop()
     
@@ -216,8 +218,60 @@ def keyboard_loop(comm):
         vs.stop()
 
 def welcome(comm):
-    data = comm.recv(source=MPI_Rank.ROBOT)
-
+    while True:
+        data = comm.recv(source=MPI_Rank.ROBOT)
+        
+        if data:
+            break
+    print("== Exit welcome_user ==")
+    sys.stdout.flush()
+    
+def myo_training_user(comm):
+    while True:
+        data = comm.recv(source=MPI_Rank.ROBOT)
+        inst = data[0]
+        
+        if inst == RobotMotion.EXIT:
+            break
+        elif inst == RobotMotion.HELP:
+            print("Hear from robot")
+            sys.stdout.flush()
+            gesture = data[1]
+            myo_training_1_time(comm, gesture)
+    print("== Exit myo_training_user ==")
+    sys.stdout.flush()
+    
+def myo_training_1_time(comm, gesture):
+    print("[INFO] sampling THREADED frames from webcam...")
+    
+    myo.init(sdk_path=os.path.join(base_dir, 'myo-sdk-win-0.9.0'))
+    hub = myo.Hub()
+    listener = Listener()
+    print("[INFO] listening ....")
+    sys.stdout.flush()
+    
+    list_str_pose = ["fingers_spread", "wave_out", "wave_in", "fist"]
+    print("==== list_str_pose ====", list_str_pose[gesture])
+    sys.stdout.flush()
+    
+    try:
+        last_p = ""
+        while hub.run(listener.on_event, 200):
+            ppose = listener.get_pose()
+            print("ppose", ppose)
+            sys.stdout.flush()
+            if ppose != last_p:
+                last_p = ppose
+                if ppose != "rest":
+                    print("== myo detect ppose", ppose)
+                    sys.stdout.flush()
+                    
+                    if ppose == list_str_pose[gesture]:
+                        send_pose_to_robot(comm, list_str_pose[gesture])
+                        break
+    finally:
+        hub.stop()  # !! crucial
+    
 def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -233,7 +287,10 @@ def main():
         print("== perception part ==")
         sys.stdout.flush()
         
-        welcome(comm)
+        # welcome(comm)
+        
+        # if ctrl_type=="myo":
+            # myo_training_user(comm)
         
         # Note: we need press Esc to leave keyboard_loop(comm) or myo_loop(comm)
         if ctrl_type=="keyboard":
@@ -241,12 +298,17 @@ def main():
         else: # Polling signals from Myo
             myo_loop(comm)
         
-        comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+        
+        # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
     elif rank == MPI_Rank.ROBOT: # Robot
         print("== robot part ==")
         sys.stdout.flush()
         
-        environment.welcome(comm)
+        # environment.welcome(comm)
+        
+        # if ctrl_type=="myo":
+            # environment.training_user(comm)
+        
         environment.main(comm)
         
     else:
@@ -257,6 +319,7 @@ def main():
     pygame.quit()
     print("== process {} is done ==".format(rank))
     sys.stdout.flush()
+    sys.exit(0)
 
 if __name__ == '__main__':
     main()

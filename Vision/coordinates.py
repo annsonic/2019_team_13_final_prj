@@ -15,6 +15,8 @@ sys.path.append(parentdir)
 from constants import level_set   # Inside parent folder
 from constants import current_level
 from constants import dict_symbol
+from constants import dict_hsv   # Inside parent folder
+from constants import dict_role_hsv
 
 class imgParser():
     """ Get index of grid which is occupied by object
@@ -163,7 +165,7 @@ def approx2_rect(img, bg='black', skew=False, area=100, scale=0.03):
             p4 = np.matrix([[x + w, y + h]])
             xc = x + w/2.0
             yc = y + h/2.0
-            
+        
         list_contour.append(np.array([p1, p2, p3, p4]).astype(int))
         list_yolo_form.append(np.array([xc, yc, w, h]).astype(int))
     # print(len(list_contour))
@@ -245,19 +247,31 @@ def get_rect(img2, bg='black', skew=False, area=100, scale=0.03):
     
     return list_contour, list_yolo_form
 
+def color_filter(img, light, dark):
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv_img, light, dark)
+    segment = cv2.bitwise_and(img, img, mask=mask)
     
+    return segment
+        
 def object_get_rect(cam, warped, role):
-    obj = cam.color_filter(warped, 
-            cam.dict_role_hsv[role]["light"], 
-            cam.dict_role_hsv[role]["dark"])
+    obj = color_filter(warped, 
+            dict_role_hsv[role]["light"], 
+            dict_role_hsv[role]["dark"])
+    # cv2.imshow("Warped", warped)
+    # k = cv2.waitKey(0)
+    # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
+    # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+        # cv2.destroyAllWindows()
+    
     if np.sum(obj) == 0:
         raise ValueError("Xinyi: Can not detect color of {} in this image".format(role))
         sys.exit(1)
             
     list_contour, list_yolo_form = get_rect(
             obj, bg='black', skew=False, 
-            area=cam.dict_role_hsv[role]["area"],
-            scale=cam.dict_role_hsv[role]["scale"])
+            area=dict_role_hsv[role]["area"],
+            scale=dict_role_hsv[role]["scale"])
     return list_contour, list_yolo_form
     
 def test():
@@ -271,7 +285,7 @@ def test():
     img_name = os.path.join(cam.folder, files[-1])
     img = cv2.imread(img_name)
     
-    # cam.get_perspective(img) # Calculate transformation matrix again
+    cam.get_perspective(img) # Calculate transformation matrix again
     
     warped = cam.bird_view(img)
     
@@ -310,6 +324,6 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         fn = sys.argv[1]
     else:
-        fn = os.path.join(base_dir, 'map/2.png')
+        fn = os.path.join(base_dir, 'camera_data/monitoring_0.png')
     
     test()

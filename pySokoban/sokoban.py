@@ -93,9 +93,7 @@ class mySokoban():
                 str_status = "can_move"
                 matrix[y][x-1] = "@"
                 if matrix[y][x] == "+": # Xinyi
-                    # if self.target_found == True:
                     matrix[y][x] = "."
-                    # self.target_found = False
                 else:
                     matrix[y][x] = " "
             
@@ -108,9 +106,7 @@ class mySokoban():
                     matrix[y][x-2] = "$"
                     matrix[y][x-1] = "@"
                     if matrix[y][x] == "+": # Xinyi
-                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
                 elif matrix[y][x-2] == ".":
@@ -118,13 +114,13 @@ class mySokoban():
                     matrix[y][x-2] = "*"
                     matrix[y][x-1] = "@"
                     if matrix[y][x] == "+": # Xinyi
-                    # if self.target_found == True:
                         matrix[y][x] = "."
-                        # self.target_found = False
                     else:
                         matrix[y][x] = " "
-                else:
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
                     str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
             # if is_box_on_target
             elif matrix[y][x-1] == "*":
                 print("\tBox on target Found")
@@ -150,8 +146,10 @@ class mySokoban():
                     else:
                         matrix[y][x] = " "
                     # self.target_found = True
-                else:
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
                     str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
             # if is_target
             elif matrix[y][x-1] == ".":
                 print("\tTarget Found")
@@ -209,8 +207,10 @@ class mySokoban():
                         # self.target_found = False
                     else:
                         matrix[y][x] = " "				
-                else:
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
                     str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
             # if is_box_on_target
             elif matrix[y][x+1] == "*":
                 print("\tBox on target Found")
@@ -236,8 +236,10 @@ class mySokoban():
                     else:
                         matrix[y][x] = " "
                     # self.target_found = True
-                else:
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
                     str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
             # if is_target
             elif matrix[y][x+1] == ".":
                 print("\tTarget Found")
@@ -295,8 +297,10 @@ class mySokoban():
                         # self.target_found = False
                     else:
                         matrix[y][x] = " "
-                else:
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
                     str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
             # if is_box_on_target
             elif matrix[y+1][x] == "*":
                 print("\tBox on target Found")
@@ -322,8 +326,10 @@ class mySokoban():
                     else:
                         matrix[y][x] = " "
                     # self.target_found = True
-                else:
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
                     str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
             # if is_target
             elif matrix[y+1][x] == ".":
                 print("\tTarget Found")
@@ -381,8 +387,10 @@ class mySokoban():
                         # self.target_found = False
                     else:
                         matrix[y][x] = " "					
-                else:
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
                     str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
             # if is_box_on_target
             elif matrix[y-1][x] == "*":
                 print("\tBox on target Found")
@@ -407,6 +415,10 @@ class mySokoban():
                         matrix[y][x] = "."
                     else:
                         matrix[y][x] = " "
+                elif (matrix[y][x-2] == "*") or (matrix[y][x-2] == "$"):
+                    str_status = "can_not_move"
+                else:
+                    str_status = "\tThere is a wall here"
                     # self.target_found = True
                         
             # if is_target

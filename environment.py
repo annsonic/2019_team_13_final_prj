@@ -72,42 +72,42 @@ class Components():
         
         
         
-        # Pop out wrong history
-        flag_undo = False
-        while count <-1:
-            print('\t===undo move===')
-            sys.stdout.flush()
-            self.game.myLevel.getLastMatrix()
-            
-            count += 1
-            flag_undo = True
-            self.game.drawLevel(self.game.myLevel.matrix)
-            
-        # Tell which box is our first target
-        mind_list_boxes_pos = self.game.myLevel.getBoxes()
-        mind_player_pos = self.game.myLevel.getPlayerPosition()
-        first_box = which_box(mind_player_pos, mind_list_boxes_pos, self.list_suggestion)
-        print('\t===fisrt target box is at {}==='.format(first_box))
-        sys.stdout.flush()
-        # TODO: robot turns and faces first_box then says
-        
-        # Calibrate the objects in physical world
-        if flag_undo:
-            # TODO: getBoxes
-            world_player_pos = [3, 2]
-            world_list_boxes_pos = [[4,4],[3,5],[4,5]]
-            # print('\tmind_list_boxes_pos, mind_player_pos', mind_list_boxes_pos, mind_player_pos)
+        # # Pop out wrong history
+        # flag_undo = False
+        # while count <-1:
+            # print('\t===undo move===')
             # sys.stdout.flush()
-            # TODO: check mismatches and robot says let me undo
-            [num_row, num_col] = self.game.myLevel.getSize()
-            calibrate_world(world_player_pos, 
-                    world_list_boxes_pos,
-                    mind_player_pos,
-                    mind_list_boxes_pos,
-                    num_row, num_col)
-            # TODO: robot pushes the boxes back
+            # self.game.myLevel.getLastMatrix()
             
-            flag_undo = False
+            # count += 1
+            # flag_undo = True
+            # self.game.drawLevel(self.game.myLevel.matrix)
+            
+        # # Tell which box is our first target
+        # mind_list_boxes_pos = self.game.myLevel.getBoxes()
+        # mind_player_pos = self.game.myLevel.getPlayerPosition()
+        # first_box = which_box(mind_player_pos, mind_list_boxes_pos, self.list_suggestion)
+        # print('\t===fisrt target box is at {}==='.format(first_box))
+        # sys.stdout.flush()
+        # # TODO: robot turns and faces first_box then says
+        
+        # # Calibrate the objects in physical world
+        # if flag_undo:
+            # # TODO: getBoxes
+            # world_player_pos = [3, 2]
+            # world_list_boxes_pos = [[4,4],[3,5],[4,5]]
+            # # print('\tmind_list_boxes_pos, mind_player_pos', mind_list_boxes_pos, mind_player_pos)
+            # # sys.stdout.flush()
+            # # TODO: check mismatches and robot says let me undo
+            # [num_row, num_col] = self.game.myLevel.getSize()
+            # calibrate_world(world_player_pos, 
+                    # world_list_boxes_pos,
+                    # mind_player_pos,
+                    # mind_list_boxes_pos,
+                    # num_row, num_col)
+            # # TODO: robot pushes the boxes back
+            
+            # flag_undo = False
     
     def play(self):
         print("== Enter play ==")
@@ -179,12 +179,49 @@ class Components():
             elif inst == RobotMotion.HELP:
                 if has_robot:
                     # TODO: ask & listen
-                    self.robot.say(line='沒問題 我一定會幫你的', mood="positive")
+                    self.robot.say(line='算了 我自己來吧', mood="positive")
                 
                 if (self.renew_suggestion):# or (len(self.list_suggestion)==0):
                     self.list_suggestion = []
                     self.give_suggestion()
                     self.renew_suggestion = False
+                    
+                    
+                    
+                    for a_idx, action in enumerate(self.list_suggestion):
+                        event = pygame.event.poll() 
+                        # work-around for pygame.display.update() got stuck
+                        
+                        if action == "Left":
+                            str_status = self.game.movePlayer("L")
+                            self.robot.move(0, 0, 90, speed_level=1)
+                            self.robot.move(0.185, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                            self.robot.move(0, 0, -90, speed_level=3)
+                            
+                        elif action == "Right":
+                            str_status = self.game.movePlayer("R")
+                            self.robot.move(0, 0, -90, speed_level=1)
+                            self.robot.move(0.185, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                            self.robot.move(0, 0, 90, speed_level=3)
+                            
+                        elif action == "Up":
+                            str_status = self.game.movePlayer("U")
+                            self.robot.move(0.185, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                        elif action == "Down":
+                            str_status = self.game.movePlayer("D")
+                            self.robot.move(0, 0, 180, speed_level=1)
+                            self.robot.move(0.185, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                            self.robot.move(0, 0, -180, speed_level=3)
+                        
+                    print(self.list_suggestion)
+                    sys.stdout.flush()
+                    self.robot.say(line='你太遜了', mood="negative")
+                    
+                break
                     
     def chat(self):
         # open camera

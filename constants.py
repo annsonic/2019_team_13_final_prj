@@ -9,9 +9,9 @@ dict_title = {
 
 cam_id = 0
 has_robot = True
-host="192.168.43.97"
-ctrl_type= "keyboard"#"myo"
-wait_time = 300 # unit: seconds
+host = "192.168.43.72"
+ctrl_type = "myo"#"keyboard"#"myo"
+wait_time = 30 # unit: seconds
 
 dict_hsv = {
             "light_green": (46, 30, 0),
@@ -64,7 +64,7 @@ dict_symbol = {
             "floor": " "
             }
             
-unit_pace_length = 0.20 # unit:m
+unit_pace_length = 0.19 # unit:m
 head_pitch = 50
             
 class MPI_Rank(enum.IntEnum):

@@ -7,6 +7,7 @@ import time
 import pyzenbo
 from pyzenbo.modules.dialog_system import RobotFace
 from pyzenbo.modules.utility import PlayAction
+from pyzenbo.modules.line_follower import LineFollowerConfig
 from constants import unit_pace_length
 from constants import head_pitch
 
@@ -104,7 +105,8 @@ class myRobot():
         self.move(self.dist, 0, 0, speed_level=3)
         
         # To prevent hitting box
-        self.backward()
+        # self.backward()
+        
         
     def backward(self):
         self.r.motion.remote_control_body(
@@ -113,19 +115,41 @@ class myRobot():
         time.sleep(0.7)
         self.r.motion.remote_control_body(
             direction=0, sync=True, timeout=1)
-        
+        # self.motion_say()
+        # self.move(0, 0, -180, speed_level=3)
     def right(self):
         self.motion_say()
         # self.move_head(pitch=10)
         self.move(0, 0, -90, speed_level=3)
+        
+        # self.move(0.05, 0, 0, speed_level=3)
+        
+        # To prevent hitting box
+        # self.backward()
         # self.move(self.dist, 0, 0)
-    
     def left(self):
         self.motion_say()
         # self.move_head(pitch=10)
         self.move(0, 0, 90, speed_level=3)
         # self.move(self.dist, 0, 0)
         
+        # self.backward()
+    def auto_backward(self):
+        self.motion_say()
+        self.move(0, 0, -180, speed_level=3)
+    def auto_right(self):
+        self.motion_say()
+        # self.move_head(pitch=10)
+        self.move(0, 0, -90, speed_level=3)
+        self.forward()
+        self.move(0, 0, 90, speed_level=3)
+    
+    def auto_left(self):
+        self.motion_say()
+        # self.move_head(pitch=10)
+        self.move(0, 0, 90, speed_level=3)
+        self.forward()
+        self.move(0, 0, -90, speed_level=3)
     def move_head(self, pitch):
         # In Zenbo junior the range is -10(down) to 50(up)
         result = self.r.motion.move_head(yaw_degree=0, 
@@ -199,9 +223,9 @@ if __name__ == '__main__':
                 # sync=False, 
                 # timeout=15)
     
-    
-    # robot.r.robot.set_expression(RobotFace.HAPPY, "哈  哈  哈", 
-            # sync=True, timeout=1)
+    dict_cfg = {"speed": 200}
+    robot.r.robot.set_expression(RobotFace.HAPPY, "哈  哈  哈", 
+            sync=True, timeout=1, config=dict_cfg)
     # robot.r.robot.set_expression(RobotFace.HAPPY, "你需要做復健了", 
             # sync=True, timeout=1)
     # robot.r.robot.set_expression(RobotFace.SHY, "", 
@@ -216,14 +240,23 @@ if __name__ == '__main__':
     
     # robot.motion_say()
     # print('forward')
-    robot.forward()
+    # robot.forward()
     
     robot.right()
     robot.forward()
-    
-    robot.left()
-    robot.left()
     robot.forward()
+    robot.left()
+    # robot.left()
+    robot.forward()
+    
+    # config = LineFollowerConfig()
+    # config.add_rule(
+        # LineFollowerConfig.COLOR['BLACK'],
+        # LineFollowerConfig.BEHAVIOR['SPEED_LEVEL'],
+        # LineFollowerConfig.SPEED['L3'])
+    # json_string = config.build()
+    # robot.r.lineFollower.follow_line(json_string=json_string, sync=True, timeout=None)
+    
     # robot.move_head(pitch=30)
     
     # robot.release()

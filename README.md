@@ -5,6 +5,17 @@
   Python 3
   ```
   pip install pygame
+  pip install imutils
+  Under pyzenbo folder, launch python setup.py install or python3 setup.py install
+  ```
+  Install Myo SDK, please referring to 
+  
+  https://support.getmyo.com/hc/en-us/articles/202657596-Getting-starting-with-Myo-on-Windows
+  
+* Execution
+
+  ```
+  python 2_main.py
   ```
 
 * Modules

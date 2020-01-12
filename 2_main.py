@@ -2,7 +2,7 @@ import sys
 import os
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(base_dir, 'myo-python'))
-from mpi4py import MPI
+# from mpi4py import MPI
 from threading import Thread
 import cv2
 import imutils

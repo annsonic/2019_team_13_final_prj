@@ -21,15 +21,17 @@ class myRobot():
         
         self.heading = 90
         
-        self.face = { # RobotFace.SINGING,
+        self.face = { # RobotFace.SINGING, RobotFace.SHY,
         "positive": [RobotFace.DEFAULT, RobotFace.DEFAULT_STILL, 
                      RobotFace.CONFIDENT, RobotFace.INTERESTED, 
-                     RobotFace.HAPPY, RobotFace.PLEASED, 
-                     RobotFace.PROUD,  
+                     RobotFace.HAPPY, RobotFace.PLEASED,  
                      RobotFace.ACTIVE, RobotFace.AWARE_LEFT, 
                      RobotFace.AWARE_RIGHT],
-        "negative": [RobotFace.SHY, RobotFace.EXPECTING, RobotFace.INNOCENT,
-                     RobotFace.SHOCKED, RobotFace.DOUBTING]
+        "negative": [RobotFace.EXPECTING, 
+                     RobotFace.INNOCENT, RobotFace.PROUD,
+                     RobotFace.SHOCKED, RobotFace.DOUBTING,
+                     RobotFace.QUESTIONING, RobotFace.IMPATIENT,
+                     RobotFace.HELPLESS, RobotFace.WORRIED]
                     }
         
         self.former_line_index = None
@@ -65,8 +67,9 @@ class myRobot():
         
     def say(self, line="Hi", mood="positive"):
         # self.move_head(pitch=head_pitch)
+        dict_cfg = {"speed": 150}
         self.r.robot.set_expression(random.choice(self.face[mood]), line, 
-            sync=False, timeout=1)
+            sync=False, timeout=1, config=dict_cfg)
         self.r.robot.set_expression(RobotFace.DEFAULT, " ", sync=True, timeout=1)
         
     def motion_say(self):
@@ -101,7 +104,6 @@ class myRobot():
     def forward(self):
         
         self.motion_say()
-        # self.move_head(pitch=10)
         self.move(self.dist, 0, 0, speed_level=3)
         
         # To prevent hitting box
@@ -119,8 +121,7 @@ class myRobot():
         # self.move(0, 0, -180, speed_level=3)
     def right(self):
         self.motion_say()
-        # self.move_head(pitch=10)
-        self.move(0, 0, -90, speed_level=3)
+        self.move(0, 0, -90, speed_level=1)
         
         # self.move(0.05, 0, 0, speed_level=3)
         
@@ -129,27 +130,11 @@ class myRobot():
         # self.move(self.dist, 0, 0)
     def left(self):
         self.motion_say()
-        # self.move_head(pitch=10)
-        self.move(0, 0, 90, speed_level=3)
+        self.move(0, 0, 90, speed_level=1)
         # self.move(self.dist, 0, 0)
         
         # self.backward()
-    def auto_backward(self):
-        self.motion_say()
-        self.move(0, 0, -180, speed_level=3)
-    def auto_right(self):
-        self.motion_say()
-        # self.move_head(pitch=10)
-        self.move(0, 0, -90, speed_level=3)
-        self.forward()
-        self.move(0, 0, 90, speed_level=3)
     
-    def auto_left(self):
-        self.motion_say()
-        # self.move_head(pitch=10)
-        self.move(0, 0, 90, speed_level=3)
-        self.forward()
-        self.move(0, 0, -90, speed_level=3)
     def move_head(self, pitch):
         # In Zenbo junior the range is -10(down) to 50(up)
         result = self.r.motion.move_head(yaw_degree=0, 
@@ -165,54 +150,36 @@ class myRobot():
             sync=False, timeout=1)
             
     def _detect_f(self):
-        self.r.vision.request_detect_person(
+        self.r.vision.request_detect_face(
             interval=1,
             enable_debug_preview=True,
             enable_detect_head=True,
-            sync=False,
+            enable_face_posture=True,
+            sync=True,
             timeout=10)
         result = self.r.vision.wait_for_detect_face(
                              interval=1,
                              enable_debug_preview=True,
                              enable_detect_head=True,
                              enable_face_posture=True,
-                             enable_candidate_obj=True,
-                             enable_head_gaze_classifier=False,
                              timeout=10)
+        print('Xinyi detect', result)
         return result
         
     def detect_face(self):
-        self.r.robot.set_expression(RobotFace.HIDEFACE, " ", sync=False, timeout=1)
+        self.r.robot.set_expression(RobotFace.HIDEFACE, " ", sync=True, timeout=10)
         
         self.move_head(pitch=head_pitch)
         
+        result = self.r.utility.find_person_nearby(sync=True, timeout=15)
+        print('Xinyi find', result)
         result = self._detect_f()
         
-        # trial = 0
-        # while (result is None):
-            # result = self._detect_f()
-            # trial += 1
-            # if trial > 4:
-                # break
-            # self.r.motion.move_body(relative_x=x, 
-                # relative_y=y, 
-                # relative_theta_degree=theta, 
-                # speed_level=3,
-                # sync=True, 
-                # timeout=15)
-                
-        # if result is not None:
-            # if len(result)==1:
-                # str_dict_xyz = result[0]['context']['nameValuePairs']['faceLoc']
-                # dict_xyz = json.loads(str_dict_xyz)
-                # print('------detect------', dict_xyz['y'])
-                   
-            
-        # self.r.robot.set_expression(RobotFace.DEFAULT, " ", sync=False, timeout=1)
-        # TODO: zenbo see user face to face
+        self.r.robot.set_expression(RobotFace.DEFAULT, " ", sync=False, timeout=1)
+        
 
 if __name__ == '__main__':
-    host = "192.168.43.97"
+    host = "192.168.50.216"
     robot = myRobot(host)
     
     
@@ -238,24 +205,47 @@ if __name__ == '__main__':
     # robot.r.robot.set_expression(RobotFace.HAPPY, "頂叮叮叮頂丁", 
             # sync=True, timeout=1)
     
+    
+    # robot.detect_face()
+    
+    
     # robot.motion_say()
     # print('forward')
     # robot.forward()
     
-    robot.right()
-    robot.forward()
-    robot.forward()
-    robot.left()
+    # robot.right()
+    # robot.forward()
+    # robot.forward()
     # robot.left()
-    robot.forward()
+    # robot.left()
+    # robot.forward()
     
+    # # Try to align the wheels - 1
+    # robot.move(0, 0, 90, speed_level=3)
+    # robot.backward()
+    # robot.move(0.01, 0, 0, speed_level=3)
+    # robot.move(0.05, 0, 0, speed_level=3)
+    
+    # Try to align the wheels - 2
+    # robot.move(0, 0, 90, speed_level=3)
+    # robot.move(0.01, 0, 0, speed_level=3)
+    # robot.backward()
+    # robot.move(0.05, 0, 0, speed_level=3)
+    
+    # # Test work, but it moves like a snake
     # config = LineFollowerConfig()
     # config.add_rule(
         # LineFollowerConfig.COLOR['BLACK'],
         # LineFollowerConfig.BEHAVIOR['SPEED_LEVEL'],
         # LineFollowerConfig.SPEED['L3'])
+    # config.add_rule(
+        # LineFollowerConfig.COLOR['YELLOW'],
+        # LineFollowerConfig.BEHAVIOR['TERMINATE'])
     # json_string = config.build()
-    # robot.r.lineFollower.follow_line(json_string=json_string, sync=True, timeout=None)
+    # robot.r.lineFollower.follow_line(json_string=json_string, sync=True, timeout=30)
+    
+    
+    
     
     # robot.move_head(pitch=30)
     

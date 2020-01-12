@@ -4,6 +4,8 @@ import pygame
 import numpy as np
 import copy
 import time
+import imutils
+import cv2
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(base_dir, 'pySokoban'))
 # sys.path.append(os.path.join(base_dir, 'SokobanSolver'))
@@ -11,11 +13,13 @@ sys.path.append(os.path.join(base_dir, 'pySokoban'))
 import pySokoban
 from pySokoban.sokoban import mySokoban
 
+from webcam import WebcamVideoStream
 from zenbo_junior import myRobot
 from image_parser import ImgParser
 from path_planning import Solver
 from path_planning import which_box
 from path_planning import calibrate_world
+from constants import cam_id
 from constants import MPI_Rank
 from constants import RobotMotion
 from constants import has_robot
@@ -27,6 +31,23 @@ from constants import wait_time
         
 class Components():
     def __init__(self, comm):
+        self.vs = WebcamVideoStream(src=cam_id).start()
+    
+        frame = np.array([])
+        # Wait webcam be ready
+        while True:
+            frame = self.vs.read()
+            while (frame.size == 0):
+                print("[INFO] sampling THREADED frames from webcam...")
+                sys.stdout.flush()
+            frame = imutils.resize(frame, width=400)
+            
+            cv2.imshow("Frame", frame)
+            k = cv2.waitKey(1)
+            if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+                cv2.destroyAllWindows()
+                break
+        
         self.comm = comm
         if has_robot:
             if host != "":
@@ -66,6 +87,41 @@ class Components():
             count -= 1
             
             self.get_solution(matrix)
+        
+        for a_idx, action in enumerate(self.list_suggestion):
+                        event = pygame.event.poll() 
+                        # work-around for pygame.display.update() got stuck
+                        
+                        if action == "Left":
+                            str_status = self.game.movePlayer("L")
+                            self.robot.move(0, 0, 90, speed_level=1)
+                            self.robot.move(0.19, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                            self.robot.move(0, 0, -90, speed_level=3)
+                            
+                        elif action == "Right":
+                            str_status = self.game.movePlayer("R")
+                            self.robot.move(0, 0, -90, speed_level=1)
+                            self.robot.move(0.19, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                            self.robot.move(0, 0, 90, speed_level=3)
+                            
+                        elif action == "Up":
+                            str_status = self.game.movePlayer("U")
+                            self.robot.move(0.19, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                        elif action == "Down":
+                            str_status = self.game.movePlayer("D")
+                            self.robot.move(0, 0, 180, speed_level=1)
+                            self.robot.move(0.19, 0, 0, speed_level=3)
+                            # self.robot.backward()
+                            self.robot.move(0, 0, -180, speed_level=3)
+                        
+        print(self.list_suggestion)
+        sys.stdout.flush()
+        self.robot.say(line='你太遜了', mood="negative")
+                    
+            
         # print('count', count)
         # print('\tlen of solution', len(self.list_suggestion))
         # sys.stdout.flush()
@@ -193,6 +249,7 @@ class Components():
                         # work-around for pygame.display.update() got stuck
                         
                         if action == "Left":
+                            self.robot.motion_say()
                             str_status = self.game.movePlayer("L")
                             self.robot.move(0, 0, 90, speed_level=1)
                             self.robot.move(0.185, 0, 0, speed_level=3)
@@ -200,6 +257,7 @@ class Components():
                             self.robot.move(0, 0, -90, speed_level=3)
                             
                         elif action == "Right":
+                            self.robot.motion_say()
                             str_status = self.game.movePlayer("R")
                             self.robot.move(0, 0, -90, speed_level=1)
                             self.robot.move(0.185, 0, 0, speed_level=3)
@@ -207,10 +265,12 @@ class Components():
                             self.robot.move(0, 0, 90, speed_level=3)
                             
                         elif action == "Up":
+                            self.robot.motion_say()
                             str_status = self.game.movePlayer("U")
                             self.robot.move(0.185, 0, 0, speed_level=3)
                             # self.robot.backward()
                         elif action == "Down":
+                            self.robot.motion_say()
                             str_status = self.game.movePlayer("D")
                             self.robot.move(0, 0, 180, speed_level=1)
                             self.robot.move(0.185, 0, 0, speed_level=3)
@@ -226,16 +286,10 @@ class Components():
     def chat(self):
         # open camera
         
-        dict_r = {"sentence": "請等我整理一下場地", "mood": "positive"}
-        if host != "":
-                self.robot.say(line=dict_r["sentence"], mood=dict_r["mood"])
-                
-                
-        list_dict = [{"sentence": "對了 告訴你一個小秘密哦", "mood": "positive"},
-                     {"sentence": "我是機器人學的守護神之一", "mood": "positive"},
-                     {"sentence": "所以萬一你卡關太久了", "mood": "positive"},
-                     {"sentence": "我會主動提供破關提示", "mood": "positive"},
-                     ]
+        self.robot.detect_face()
+        
+        list_dict = [{"sentence": "哈囉 帥氣的大哥哥你好", "mood": "positive"},
+                 {"sentence": "我們一起玩個小遊戲好嗎", "mood": "positive"}]
 
         for d in list_dict:
             print(d["sentence"])
@@ -243,46 +297,80 @@ class Components():
             if host != "":
                 self.robot.say(line=d["sentence"], mood=d["mood"])
         
-        
-        self.parser.update_point()
-        [world_player_pos] = parser.find_index_on_puzzle("robot")
-        world_list_boxes_pos = parser.find_index_on_puzzle("box")
-        mind_list_boxes_pos = self.game.myLevel.getBoxes()
-        mind_player_pos = self.game.myLevel.getPlayerPosition()
-        
-        calibrate_world(world_player_pos, 
-                    world_list_boxes_pos,
-                    mind_player_pos,
-                    mind_list_boxes_pos,
-                    num_row, num_col)
+        dict_r = {"sentence": "請等我準備一下", "mood": "positive"}
+        if host != "":
+                self.robot.say(line=dict_r["sentence"], mood=dict_r["mood"])
+                
+        # Wait Zenbo finish talking
+        time.sleep(6)
         
         print("== Exit chat ==")
         sys.stdout.flush()
-
-def welcome(comm):
-    user_angle = 0
-    if host != "":
-        robot = myRobot(host)
-        robot.detect_face()
-    
-    list_dict = [{"sentence": "哈囉 帥氣的大哥哥你好", "mood": "positive"},
-                 {"sentence": "我們一起玩個小遊戲好嗎", "mood": "positive"}]
-
-    for d in list_dict:
-        print(d["sentence"])
-        sys.stdout.flush()
-        if host != "":
-            robot.say(line=d["sentence"], mood=d["mood"])
+        
+    def calibrate_rotation(self, th, dir=0):
+        while True:
+            frame = self.vs.read()
+            if frame.size != 0:
+                self.parser.img = frame
+            self.parser.update_point()
+            xc = self.parser.robot_yolo_form[0][0]
+            yc = self.parser.robot_yolo_form[0][1]
+            w = self.parser.robot_yolo_form[0][2]
+            h = self.parser.robot_yolo_form[0][3]
+            angle = self.parser.robot_angle[0]
+            print('Xinyi ', w, h, angle)
             
+            if (dir == 0) and(w > h) and (abs(angle) < th):
+                break
+            elif (dir == 1) and(h > w) and (abs(angle) < th):
+                break
+            else:
+                if -90 < angle < 90: 
+                    self.robot.move(0, 0, -th, speed_level=1)
+                else:
+                    self.robot.move(0, 0, th, speed_level=1)
+                time.sleep(1)
+            
+        self.robot.move(0, 0, -th, speed_level=1)
+        time.sleep(1)
+        
+    def calibrate_centroid(self):
+        [[xi, yi]] = self.parser.find_index_on_puzzle("robot")
+        grid_xc = self.parser.lat[xi]
+        grid_yc = self.parser.long[yi]
+        print('lat', self.parser.lat[xi])
+        print('long', self.parser.long[yi])
+        
+        while True:
+            frame = self.vs.read()
+            if frame.size != 0:
+                self.parser.img = frame
+            self.parser.update_point()
+            xc = self.parser.robot_yolo_form[0][0]
+            yc = self.parser.robot_yolo_form[0][1]
+            angle = self.parser.robot_angle[0]
+            print('Xinyi ', xc, yc, angle)
     
-    if host != "":
-        # wait zenbo stops talking
-        time.sleep(5)
-        # robot.release()
-    # Sync with MASTER 
-    comm.send((True,), dest=MPI_Rank.MASTER)
-    print("== Exit welcome ==")
-    sys.stdout.flush()
+            if (xc == grid_xc+20) and (yc == grid_yc+20):
+                break
+            else:
+                
+                self.robot.r.motion.remote_control_body(
+                    direction=2, sync=True, timeout=1)
+                time.sleep(0.5)
+                self.robot.r.motion.remote_control_body(
+                    direction=0, sync=True, timeout=1)
+                time.sleep(1)
+            
+        self.robot.move(0, 0, -th, speed_level=1)
+        time.sleep(1)
+        
+    def calibrate(self):
+        # Calibrate Zenbo's position
+        self.calibrate_rotation(th=10)
+        self.robot.say(line="我ok 可以開始玩囉", mood="positive")
+        # self.calibrate_centroid()
+        
 
 def training_user(comm):
     if host != "":
@@ -366,6 +454,6 @@ def training_user(comm):
 def main(comm):
     game_components = Components(comm)
     
-    # game_components.chat()
+    game_components.chat()
     
-    game_components.play()
+    # game_components.play()

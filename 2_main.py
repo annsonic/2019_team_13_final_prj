@@ -7,9 +7,12 @@ from threading import Thread
 import cv2
 import imutils
 import pygame
+import numpy as np
+import time
 
 import myo
 import environment
+from environment import Components
 from webcam import WebcamVideoStream
 from webcam import test
 from constants import cam_id
@@ -84,23 +87,58 @@ class Listener(myo.DeviceListener):
         else:
             return ""
 
-def send_pose_to_robot(comm, pose):
+def send_pose_to_robot(pose):
     if pose == "wave_in":
-        comm.send((RobotMotion.LEFT,), dest=MPI_Rank.ROBOT)
+        game_components.robot.left()
+        game_components.robot.heading += 90
+        current_wait_time = 0
     elif pose == "wave_out":
-        comm.send((RobotMotion.RIGHT,), dest=MPI_Rank.ROBOT)
-    # elif pose == "double_tap":#"fingers_spread":
-        # comm.send((RobotMotion.BACKWARD,), dest=MPI_Rank.ROBOT)
+        game_components.robot.right()
+        game_components.robot.heading -= 90
+        current_wait_time = 0
+                
     elif pose == "fist":
-        comm.send((RobotMotion.FORWARD,), dest=MPI_Rank.ROBOT)
-    # elif pose == "fingers_spread":
-        # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
-    elif pose == "help":
-        comm.send((RobotMotion.HELP,), dest=MPI_Rank.ROBOT)
+        if (abs(game_components.robot.heading)%360 == 90):
+            # game_components.calibrate_rotation(th=10, dir=0)
+            str_status = game_components.game.movePlayer("U")
+            game_components.robot.heading = 90
+    
+        elif (abs(game_components.robot.heading)%360 == 180):
 
-def myo_loop(comm):
-    print("[INFO] sampling THREADED frames from webcam...")
-    vs = WebcamVideoStream(src=cam_id).start()
+            str_status = game_components.game.movePlayer("L")
+            game_components.robot.heading = 180
+            
+        elif (abs(game_components.robot.heading)%360 == 0):
+            str_status = game_components.game.movePlayer("R")
+            game_components.robot.heading = 0
+            
+        elif (abs(game_components.robot.heading)%360 == 270):
+            str_status = game_components.game.movePlayer("D")
+            game_components.robot.heading = 270
+        
+        
+        if (str_status == "can_move"):
+            game_components.robot.forward()
+        elif str_status == "\tThere is a wall here":
+            game_components.robot.say(line="不行走 會撞牆啦", mood="negative")
+        elif str_status == "can_not_move":
+            game_components.robot.say(line="太重了 我推不動", mood="negative")
+    
+        current_wait_time = 0
+    
+    
+    elif pose == "help":
+        game_components.robot.say(line='算了 我自己來吧', mood="positive")
+        
+        game_components.list_suggestion = []
+        game_components.give_suggestion()
+
+def myo_loop():
+    # Zenbo welcom user
+    game_components = Components(comm=None)
+    game_components.chat()
+    
+    game_components.calibrate()
     
     myo.init(sdk_path=os.path.join(base_dir, 'myo-sdk-win-0.9.0'))
     hub = myo.Hub()
@@ -108,7 +146,7 @@ def myo_loop(comm):
     print("[INFO] listening ....")
     sys.stdout.flush()
     
-    folder = os.path.join(base_dir, 'Vision', 'camera_data')
+    
     
     try:
         last_p = ""
@@ -118,54 +156,91 @@ def myo_loop(comm):
         # Makes the program halt for 'time' seconds
         
         while hub.run(listener.on_event, 130):
-            frame = vs.read()
-            frame = imutils.resize(frame, width=400)
             
-            cv2.imshow("Frame", frame)
-            k = cv2.waitKey(1)
-            if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
-                cv2.destroyAllWindows()
-                break
             
             ppose = listener.get_pose()
-            
+            event = pygame.event.poll()
             if ppose != last_p:
                 last_p = ppose
                 if ppose != "rest":
                     print("== myo detect ppose", ppose)
                     sys.stdout.flush()
-                    img_name = os.path.join(folder, 
-                            "{}_{}.png".format("monitoring", 3))
-                    cv2.imwrite(img_name, frame)
-                    send_pose_to_robot(comm, ppose)
+                    
+                    if ppose == "wave_in":
+                        game_components.robot.left()
+                        game_components.robot.heading += 90
+                        current_wait_time = 0
+                    elif ppose == "wave_out":
+                        game_components.robot.right()
+                        game_components.robot.heading -= 90
+                        current_wait_time = 0
+                                
+                    elif ppose == "fist":
+                        if (abs(game_components.robot.heading)%360 == 90):
+                            # game_components.calibrate_rotation(th=10, dir=0)
+                            str_status = game_components.game.movePlayer("U")
+                            game_components.robot.heading = 90
+                    
+                        elif (abs(game_components.robot.heading)%360 == 180):
+
+                            str_status = game_components.game.movePlayer("L")
+                            game_components.robot.heading = 180
+                            
+                        elif (abs(game_components.robot.heading)%360 == 0):
+                            str_status = game_components.game.movePlayer("R")
+                            game_components.robot.heading = 0
+                            
+                        elif (abs(game_components.robot.heading)%360 == 270):
+                            str_status = game_components.game.movePlayer("D")
+                            game_components.robot.heading = 270
+                        
+                        
+                        if (str_status == "can_move"):
+                            game_components.robot.forward()
+                        elif str_status == "\tThere is a wall here":
+                            game_components.robot.say(line="不行走 會撞牆啦", mood="negative")
+                        elif str_status == "can_not_move":
+                            game_components.robot.say(line="太重了 我推不動", mood="negative")
+                    
+                        current_wait_time = 0
+                    
+                    
             else:
                 current_wait_time += dt
                 if current_wait_time > wait_time:
-                    send_pose_to_robot(comm, "help")
+                    game_components.robot.say(line='算了 我自己來吧', mood="positive")
+                        
+                    game_components.list_suggestion = []
+                    game_components.give_suggestion()
                     current_wait_time = 0
                 
             
     finally:
-        comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+        # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
         hub.stop()  # !! crucial
-        vs.stop()
+        game_components.vs.stop()
+        pygame.quit()
     
-def keyboard_loop(comm):
-    print("[INFO] sampling THREADED frames from webcam...")
-    vs = WebcamVideoStream(src=cam_id).start()
+def keyboard_loop():
     
-    # Show controller window
-    pygame.init()
-    display_surface = pygame.display.set_mode((400, 100))
-    pygame.display.set_caption('Robot Controller')
-    font = pygame.font.Font(pygame.font.get_default_font(), 14)
-    text_surface = font.render('Press arrow keys in this window', 
-                                True, pygame.Color('orange'))
-    display_surface.blit(text_surface, dest=(80,40))
-    pygame.display.flip()
+    # Zenbo welcom user
+    game_components = Components(comm=None)
+    game_components.chat()
     
-    folder = os.path.join(base_dir, 'Vision', 'camera_data')
+    # game_components.calibrate()
     
+    # # Show controller window
+    # pygame.init()
+    # display_surface = pygame.display.set_mode((400, 100))
+    # pygame.display.set_caption('Robot Controller')
+    # font = pygame.font.Font(pygame.font.get_default_font(), 14)
+    # text_surface = font.render('Press arrow keys in this window', 
+                                # True, pygame.Color('orange'))
+    # display_surface.blit(text_surface, dest=(80,40))
+    # pygame.display.flip()
+    
+    
+    # Start playing
     try:
         # last_p = ""
         current_wait_time = 0
@@ -174,48 +249,93 @@ def keyboard_loop(comm):
         # Makes the program halt for 'time' seconds
         
         while True:
-            frame = vs.read()
-            frame = imutils.resize(frame, width=400)
+            # frame = game_components.vs.read()
+            # frame = imutils.resize(frame, width=400)
             
-            cv2.imshow("Frame", frame)
-            k = cv2.waitKey(1)
-            if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
-                cv2.destroyAllWindows()
-                break
+            # cv2.imshow("Frame", frame)
+            # k = cv2.waitKey(1)
+            # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
+                # cv2.destroyAllWindows()
+                # break
             
             event = pygame.event.poll()
             
             if event.type == pygame.KEYDOWN:
                 
-                img_name = os.path.join(folder, 
-                            "{}_{}.png".format("monitoring", 3))
-                cv2.imwrite(img_name, frame)
                 
                 if event.key == pygame.K_LEFT:
-                    send_pose_to_robot(comm, "wave_in")
+                    game_components.robot.left()
+                    game_components.robot.heading += 90
+                    current_wait_time = 0
                 elif event.key == pygame.K_RIGHT:
-                    send_pose_to_robot(comm, "wave_out")
-                elif event.key == pygame.K_DOWN:
-                    send_pose_to_robot(comm, "fingers_spread")
+                    game_components.robot.right()
+                    game_components.robot.heading -= 90
+                    current_wait_time = 0
+                
                 elif event.key == pygame.K_UP:
-                    send_pose_to_robot(comm, "fist")
+                    if (abs(game_components.robot.heading)%360 == 90):
+                        # game_components.calibrate_rotation(th=10, dir=0)
+                        str_status = game_components.game.movePlayer("U")
+                        game_components.robot.heading = 90
+                
+                    elif (abs(game_components.robot.heading)%360 == 180):
+
+                        str_status = game_components.game.movePlayer("L")
+                        game_components.robot.heading = 180
+                        
+                    elif (abs(game_components.robot.heading)%360 == 0):
+                        str_status = game_components.game.movePlayer("R")
+                        game_components.robot.heading = 0
+                        
+                    elif (abs(game_components.robot.heading)%360 == 270):
+                        str_status = game_components.game.movePlayer("D")
+                        game_components.robot.heading = 270
+                    
+                    
+                    if (str_status == "can_move"):
+                        game_components.robot.forward()
+                    elif str_status == "\tThere is a wall here":
+                        game_components.robot.say(line="不行走 會撞牆啦", mood="negative")
+                    elif str_status == "can_not_move":
+                        game_components.robot.say(line="太重了 我推不動", mood="negative")
+                
+                    current_wait_time = 0
+                
                 elif event.key == pygame.K_h:
-                    send_pose_to_robot(comm, "help")
+                    # send_pose_to_robot(comm, "help")
+                    
+                    game_components.robot.say(line='算了 我自己來吧', mood="positive")
+                    
+                    game_components.list_suggestion = []
+                    game_components.give_suggestion()
+                    current_wait_time = 0
+                    
+                    
                 elif (event.key == pygame.K_ESCAPE) or (event.key == pygame.K_q):
-                    comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+                    # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+                    break
+                    
+                flag_win = game_components.game.check_boxes()
+                if flag_win:
+                    game_components.robot.say(line="恭喜破關 你太厲害了", mood="positive")
+                    # pygame.quit()
                     break
             
             elif event.type == pygame.QUIT:
-                comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
+                # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
                 break
             else:
                 current_wait_time += dt
                 if current_wait_time > wait_time:
-                    send_pose_to_robot(comm, "help")
+                    # send_pose_to_robot(comm, "help")
                     current_wait_time = 0
             
     finally:
-        vs.stop()
+        game_components.vs.stop()
+        pygame.quit()
+    
+    
+    
 
 def welcome(comm):
     while True:
@@ -226,99 +346,19 @@ def welcome(comm):
     print("== Exit welcome_user ==")
     sys.stdout.flush()
     
-def myo_training_user(comm):
-    while True:
-        data = comm.recv(source=MPI_Rank.ROBOT)
-        inst = data[0]
-        
-        if inst == RobotMotion.EXIT:
-            break
-        elif inst == RobotMotion.HELP:
-            print("Hear from robot")
-            sys.stdout.flush()
-            gesture = data[1]
-            myo_training_1_time(comm, gesture)
-    print("== Exit myo_training_user ==")
-    sys.stdout.flush()
-    
-def myo_training_1_time(comm, gesture):
-    print("[INFO] sampling THREADED frames from webcam...")
-    
-    myo.init(sdk_path=os.path.join(base_dir, 'myo-sdk-win-0.9.0'))
-    hub = myo.Hub()
-    listener = Listener()
-    print("[INFO] listening ....")
-    sys.stdout.flush()
-    
-    list_str_pose = ["fingers_spread", "wave_out", "wave_in", "fist"]
-    print("==== list_str_pose ====", list_str_pose[gesture])
-    sys.stdout.flush()
-    
-    try:
-        last_p = ""
-        while hub.run(listener.on_event, 200):
-            ppose = listener.get_pose()
-            print("ppose", ppose)
-            sys.stdout.flush()
-            if ppose != last_p:
-                last_p = ppose
-                if ppose != "rest":
-                    print("== myo detect ppose", ppose)
-                    sys.stdout.flush()
-                    
-                    if ppose == list_str_pose[gesture]:
-                        send_pose_to_robot(comm, list_str_pose[gesture])
-                        break
-    finally:
-        hub.stop()  # !! crucial
+
+
     
 def main():
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    node_name = MPI.Get_processor_name()
-    print("Hello world from process {} at {}".format(rank, node_name))
-    sys.stdout.flush()
     
-    if comm.Get_size() < 2:
-        raise ValueError("Xinyi: We need more threads to run this program")
-        sys.exit(1)
+        
+    # Note: we need press Esc to leave keyboard_loop(comm) or myo_loop(comm)
+    if ctrl_type=="keyboard":
+        keyboard_loop()
+    else: # Polling signals from Myo
+        myo_loop()
     
-    if rank == MPI_Rank.MASTER:
-        print("== perception part ==")
-        sys.stdout.flush()
-        
-        # welcome(comm)
-        
-        # if ctrl_type=="myo":
-            # myo_training_user(comm)
-        
-        # Note: we need press Esc to leave keyboard_loop(comm) or myo_loop(comm)
-        if ctrl_type=="keyboard":
-            keyboard_loop(comm)
-        else: # Polling signals from Myo
-            myo_loop(comm)
-        
-        
-        # comm.send((RobotMotion.EXIT,), dest=MPI_Rank.ROBOT)
-    elif rank == MPI_Rank.ROBOT: # Robot
-        print("== robot part ==")
-        sys.stdout.flush()
-        
-        # environment.welcome(comm)
-        
-        # if ctrl_type=="myo":
-            # environment.training_user(comm)
-        
-        environment.main(comm)
-        
-    else:
-        print("== Useless process {} ==".format(rank))
-        sys.stdout.flush()
-        
-    pygame.display.quit()
-    pygame.quit()
-    print("== process {} is done ==".format(rank))
-    sys.stdout.flush()
+    
     sys.exit(0)
 
 if __name__ == '__main__':

@@ -5,6 +5,8 @@ from threading import Thread
 import cv2
 import imutils
 import time
+import sys
+import numpy as np
 
 
 class FPS:
@@ -43,7 +45,7 @@ class WebcamVideoStream:
     def __init__(self, src=0):
         # initialize the video camera stream and read the first frame
         # from the stream
-        self.stream = cv2.VideoCapture(src, cv2.CAP_DSHOW)
+        self.stream = cv2.VideoCapture(src)
         # solution to [ WARN:1] terminating async callback
         # But still has OpenCV Error capturing images in thread: 
         # [ERROR:0] VIDEOIO(makePtr<VideoCapture_DShow>(index)): raised unknown C++ exception!
@@ -51,10 +53,13 @@ class WebcamVideoStream:
         while not self.stream.isOpened():
             time.sleep(1)
         
-        self.frame = None
-        while self.frame is None:
+        self.frame = np.array([])
+        while (self.frame.size == 0):
             (self.grabbed, self.frame) = self.stream.read()
             time.sleep(1)
+            
+        print("[INFO] sampling THREADED frames from webcam...")
+        sys.stdout.flush()
         
         # initialize the variable used to indicate if the thread should
         # be stopped
@@ -85,7 +90,7 @@ class WebcamVideoStream:
         self.stopped = True
 
 
-def test(cam_id=0):
+def test(cam_id=1):
     num_frames = 100
     display = 1
     
@@ -119,4 +124,4 @@ def test(cam_id=0):
     vs.stop()
     
 if __name__ == '__main__':
-    test()
+    test(cam_id=1)

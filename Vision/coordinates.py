@@ -101,7 +101,7 @@ class imgParser():
                 max_row_length = row_length
         return [max_row_length, len(self.matrix)]
     
-def approx2_rect(img, bg='black', skew=False, area=100, scale=0.03):
+def approx2_rect(img, bg='black', skew=False, area=100):
     
     if len(img.shape)==3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -126,54 +126,43 @@ def approx2_rect(img, bg='black', skew=False, area=100, scale=0.03):
     
     list_contour = []
     list_yolo_form = []
+    list_angle = []
     
     for cnt in cnts :
-        
+        # print('Xinyi contourArea ',cv2.contourArea(cnt))
         # Filter out small contours
         if (cv2.contourArea(cnt) < area):
             continue
-        if (not skew) and (cv2.contourArea(cnt) > area*2):
-            continue
-        # print(cv2.contourArea(cnt))
-        # Filter out line segments
-        # Note: scale 0.03 depends on environment settings
-        
-        approx = cv2.approxPolyDP(cnt, 
-            epsilon=scale*cv2.arcLength(cnt, True), closed=True) 
-        # print(len(approx))
-        if (len(approx)!=4):
+        if (not skew) and (cv2.contourArea(cnt) > area*5):
             continue
         
-        if skew:# if rotated
-            a, b, c, d = approx
-            
-            p1 = np.matrix(a) # upper left
-            p2 = np.matrix(b) # lower left
-            p3 = np.matrix(c) # lower right
-            p4 = np.matrix(d) # upper right
-            
-            moment = cv2.moments(approx)
-            xc = moment["m10"] / moment["m00"]
-            yc = moment["m01"] / moment["m00"]
-            w = (np.linalg.norm(d-a)+np.linalg.norm(c-b))/2
-            h = (np.linalg.norm(b-a)+np.linalg.norm(c-d))/2
+        if skew:
+            approx = cv2.fitEllipse(cnt)
+            # (center,axes, orientation) = approx
+            # print('Xinyi eclipse', center,axes, orientation)
         else:
-            x, y, w, h = cv2.boundingRect(approx)
-            p1 = np.matrix([[x, y]])
-            p2 = np.matrix([[x + w, y]])
-            p3 = np.matrix([[x, y + h]])
-            p4 = np.matrix([[x + w, y + h]])
-            xc = x + w/2.0
-            yc = y + h/2.0
+            approx = cv2.minAreaRect(cnt)
+            
+        box = cv2.boxPoints(approx)
+        box = np.int0(box)
         
-        list_contour.append(np.array([p1, p2, p3, p4]).astype(int))
-        list_yolo_form.append(np.array([xc, yc, w, h]).astype(int))
+        (xc, yc), (w,h), angle = approx
+        p1 = box[1]
+        p2 = box[2]
+        p3 = box[0]
+        p4 = box[3]
+        
+        check_sum = np.sum(np.array(box) < 0, axis=0)
+        if np.sum(check_sum)==0:
+            list_angle.append(angle) # unit: deg
+            list_contour.append(np.array([p1, p2, p3, p4]).astype(int))
+            list_yolo_form.append(np.array([xc, yc, w, h]).astype(int))
     # print(len(list_contour))
     if len(list_yolo_form) == 0:
         raise ValueError('Error to detect rectangles.')
         sys.exit(1)
     
-    return list_contour, list_yolo_form
+    return list_contour, list_yolo_form, list_angle
     
 def visualize_contour(img2, list_contour, list_yolo_form):  
     font = cv2.FONT_HERSHEY_DUPLEX 
@@ -183,7 +172,7 @@ def visualize_contour(img2, list_contour, list_yolo_form):
     # Going through every contours found in the image. 
     for idx,approx in enumerate(list_contour):
         # draws boundary of contours. 
-        cv2.drawContours(img2, [approx], 0, (0, 0, 255), 5)  
+        cv2.drawContours(img2, [approx], 0, (0, 0, 255), 2)  
       
         # Used to flatted the array containing 
         # the co-ordinates of the vertices. 
@@ -204,13 +193,13 @@ def visualize_contour(img2, list_contour, list_yolo_form):
                         text="Arrow tip ({},{})".format(x, y), 
                         org=(x, y), 
                         fontFace=font, 
-                        fontScale=0.7, 
+                        fontScale=0.2, 
                         color=(255, 255, 255), 
-                        thickness=2)
+                        thickness=1)
                 else: 
                     # text on remaining co-ordinates. 
                     cv2.putText(img2, string, (x, y),  
-                              font, 0.7, (0, 255, 0), 2)  
+                              font, 0.2, (0, 255, 0), 1)  
             i = i + 1
         
         cX = list_yolo_form[idx][0]
@@ -220,7 +209,7 @@ def visualize_contour(img2, list_contour, list_yolo_form):
         cv2.putText(img2, "centroid ({},{})".format(cX, cY), 
                    (cX - 25, cY - 25),
                    font, 
-                   0.7, (255, 255, 255), 2)
+                   0.5, (0, 0, 255), 1)
         
     # Showing the final image. 
     cv2.namedWindow( 'contours',cv2.WINDOW_AUTOSIZE)
@@ -233,9 +222,9 @@ def visualize_contour(img2, list_contour, list_yolo_form):
     if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
         cv2.destroyAllWindows()
 
-def get_rect(img2, bg='black', skew=False, area=100, scale=0.03):  
+def get_rect(img2, bg='black', skew=False, area=100):  
     
-    list_contour, list_yolo_form = approx2_rect(img2, bg, skew, area, scale)
+    list_contour, list_yolo_form, list_angle = approx2_rect(img2, bg, skew, area)
     
     if False:
         visualize_contour(img2.copy(), list_contour, list_yolo_form)
@@ -245,7 +234,7 @@ def get_rect(img2, bg='black', skew=False, area=100, scale=0.03):
     # common_width = stats.mode(arr_yolo_form[:][:,2])[0][0]
     # print(common_width)
     
-    return list_contour, list_yolo_form
+    return list_contour, list_yolo_form, list_angle
 
 def color_filter(img, light, dark):
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -258,21 +247,24 @@ def object_get_rect(cam, warped, role):
     obj = color_filter(warped, 
             dict_role_hsv[role]["light"], 
             dict_role_hsv[role]["dark"])
+    
+    
     # cv2.imshow("Warped", warped)
     # k = cv2.waitKey(0)
     # # Exiting the window if 'q'/ESC is pressed on the keyboard. 
     # if (k%256 == 27) or (k%256 == 81) or (k%256 == 113):  
         # cv2.destroyAllWindows()
     
+    
     if np.sum(obj) == 0:
         raise ValueError("Xinyi: Can not detect color of {} in this image".format(role))
         sys.exit(1)
             
-    list_contour, list_yolo_form = get_rect(
-            obj, bg='black', skew=False, 
-            area=dict_role_hsv[role]["area"],
-            scale=dict_role_hsv[role]["scale"])
-    return list_contour, list_yolo_form
+    
+    list_contour, list_yolo_form, list_angle = get_rect(
+            obj, bg='black', skew=dict_role_hsv[role]["circle"], 
+            area=dict_role_hsv[role]["area"])
+    return list_contour, list_yolo_form, list_angle
     
 def test():
     import camera

@@ -7,16 +7,17 @@ dict_title = {
     "class_mate_she": "漂亮的姊姊",
     "professor": "dear professor"}
 
-cam_id = 0
+cam_id = 1
 has_robot = True
-host = "192.168.43.72"
+#host = "192.168.0.192"
+host = "172.20.10.11"
 ctrl_type = "myo"#"keyboard"#"myo"
-wait_time = 30 # unit: seconds
+wait_time = 5 # unit: seconds
 
 dict_hsv = {
-            "light_green": (46, 30, 0),
+            "light_green": (46, 30, 80),
             "dark_green": (100, 255, 255),
-            "light_yellow": (15, 35, 0),
+            "light_yellow": (15, 35, 190),
             "dark_yellow": (45, 255, 255),
             "light_cyan": (80, 0, 190),
             "dark_cyan": (150, 85, 255),
@@ -26,28 +27,42 @@ dict_hsv = {
             "dark_red": (7, 255, 255),
             "light_orange": (5, 150, 0),
             "dark_orange": (17, 255, 255),
+            "light_black": (0, 0, 0),
+            "dark_black": (179, 100, 50),
             "light_white": (0, 0, 0),
-            "dark_white": (60, 0, 255)
+            "dark_white": (179, 30, 255)
             }
             
 dict_role_hsv = {
             "wall": {
                 "light": dict_hsv["light_green"],
                 "dark": dict_hsv["dark_green"],
-                "area": 10000,
-                "scale": 0.1
+                "area": 50000,
+                "circle": False
                 },
             "box": {
                 "light": dict_hsv["light_yellow"],
                 "dark": dict_hsv["dark_yellow"],
-                "area": 1000,
-                "scale": 0.1
+                "area": 200,
+                "circle": False
                 },
-            "robot": {
+            "robot_orange": {
                 "light": dict_hsv["light_orange"],
                 "dark": dict_hsv["dark_orange"],
-                "area": 300,
-                "scale": 0.03
+                "area": 100,
+                "circle": False
+                },
+            "robot_face": {
+                "light": dict_hsv["light_black"],
+                "dark": dict_hsv["dark_black"],
+                "area": 40,
+                "circle": True
+                },
+            "robot_body": {
+                "light": dict_hsv["light_white"],
+                "dark": dict_hsv["dark_white"],
+                "area": 500,
+                "circle": True
                 },
             }
             
@@ -64,8 +79,8 @@ dict_symbol = {
             "floor": " "
             }
             
-unit_pace_length = 0.19 # unit:m
-head_pitch = 50
+unit_pace_length = 0.205 # unit:m
+head_pitch = 10
             
 class MPI_Rank(enum.IntEnum):
     MASTER = 1
